@@ -1,4 +1,5 @@
 #include <TcBUTTON.h>
+#include <TcPINOUT.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
@@ -30,11 +31,44 @@ TcBUTTON btnDown(BTN_DOWN_PIN);
 void btnEnterOnEventChange(bool state);
 TcBUTTON btnEnter(BTN_ENTER_PIN);
 
+#define BTN_CENSOR_ON_ST 40
+void btnCensorOnStOnEventChange(bool state);
+TcBUTTON btnCensorOnSt(BTN_CENSOR_ON_ST);
+// -------------------- OUTPUT -------------------- //
+#define LED_BLUE 7
+TcPINOUT ledBlue(LED_BLUE,false);
+#define LED_GREEN 8
+TcPINOUT ledGreen(LED_GREEN,false);
+#define LED_RED 9
+TcPINOUT ledRed(LED_RED,false);
+
+enum STATUS_TEST
+{
+  PASS,
+  NG,
+  TESTING,
+  NO_TEST,
+  STOP
+};
+
+STATUS_TEST status_test = NO_TEST;
+
+int passToneCount = 0;
+int ngToneCount = 0;
+
 #define BUZZER_PIN 2
 int TONE = 2000;
 int DURATION = 200;
 
 // -------------------- Global Variables -------------------- //
+
+unsigned long previousMillisPASS = 0;
+const long intervalPASS = 200;
+
+unsigned long previousMillisNG = 0;
+const long intervalNG = 2000;
+
+
 bool stateComplete = false;
 bool stateRun = false;
 bool stateStop = false;
@@ -49,6 +83,8 @@ bool currentStateEsc = false;
 bool currentStateUp = false;
 bool currentStateDown = false;
 bool currentStateEnter = false;
+bool stateCensorOnStation = false;
+
 const int pressTime = 1500;
 int countPressUp = 0;
 int countPressDown = 0;
@@ -72,7 +108,7 @@ String model = "";
 String modelSetName = "";
 int indexModelName = 0; // Index edit model name
 uint8_t lengthNameModel = 8;  // 8 Digit
-int countScrew = 0;
+uint8_t countScrew = 0;
 
 int indexMenu = 0;
 int selectMenu = 0;
@@ -104,6 +140,8 @@ int setCalMin = 0;
 int setCalMax = 0;
 void readArray(int indexM, int* data, int dataSize = 10);
 
+
+
 void setup() {
   Serial.begin(115200);
   btnRun.setOnEventChange(btnRunOnEventChange);
@@ -115,6 +153,7 @@ void setup() {
   btnUp.setOnEventChange(btnUpOnEventChange);
   btnDown.setOnEventChange(btnDownOnEventChange);
   btnEnter.setOnEventChange(btnEnterOnEventChange);
+  btnCensorOnSt.setOnEventChange(btnCensorOnStOnEventChange);
 
   Serial.println("Start...");
   lcd.begin();
@@ -129,7 +168,11 @@ void setup() {
   UpdateCalSTD();
   UpdateCountControlsSCW();
   model = readEEPROM(addressModel[indexModel], lengthNameModel);
-
+  // for(int i =0 ; i<7;i++){
+  //   tone(BUZZER_PIN, 2200, 50);
+  //   delay(100);
+  // }
+  // status_test = PASS;
 }
 void loop() {
   btnRun.update();
@@ -138,26 +181,42 @@ void loop() {
   btnUp.update();
   btnDown.update();
   btnEnter.update();
+  btnCensorOnSt.update();
   DisplayMenu();
+  handlePassTone();
+  handleNGTone();
 
   if (!stateRun && !stateStop && stateComplete) {
     stateComplete = false;
   }
-  if (stateRun && stateStop && !stateComplete) {
+  if (stateRun && stateStop && !stateComplete && stateCensorOnStation) {
     Serial.println("Completed: ");
-    tone(BUZZER_PIN, 2000, 200);
+
     stateComplete = true;
     timeComplete = millis();
     timeTotal = timeComplete - timeStart;
-    Serial.print("Start: ");
-    Serial.print(timeStart);
-    Serial.println(" ms");
-    Serial.print("Complete: ");
-    Serial.print(timeComplete);
-    Serial.println(" ms");
-    Serial.print("Total: ");
-    Serial.print(timeTotal);
-    Serial.println(" ms");
+    countScrew++;
+    int _timeTotal = (int)timeTotal;
+
+    String dataFinish = "$";
+    dataFinish += "total_time:";
+    dataFinish += String(timeTotal);
+    dataFinish+= "#";
+    Serial.println(dataFinish);
+    if(_timeTotal < CalStdMin || _timeTotal > CalStdMax ){
+      LED_Controls(1);
+      status_test = NG;
+      ngToneCount =0;
+    }else    
+    if(countScrew > SCW_count){
+      LED_Controls(1);
+      status_test = NG;
+      ngToneCount = 0;
+    }else
+    {
+      LED_Controls(0);
+      tone(BUZZER_PIN, 2000, 200);
+    }
 
     // Update LCD
     // updateLCD("Completed: ", String(timeTotal) + " ms");
@@ -172,7 +231,81 @@ void loop() {
       }
     // Clear
     // timeTotal = 0;
-    countScrew++;
+
+  }
+}
+void LED_Controls(uint8_t state){
+  if(state == 0){
+    ledRed.off();
+    ledGreen.off();
+    ledBlue.off();
+  }else if(state == 1){
+    ledRed.on();
+    ledGreen.off();
+    ledBlue.off();
+  }else  if(state == 2){
+    ledRed.off();
+    ledGreen.on();
+    ledBlue.off();
+  }else  if(state == 3){
+    ledRed.off();
+    ledGreen.off();
+    ledBlue.on();
+  }
+}
+
+
+void handleNGTone()
+{
+  if (status_test != NG)
+  {
+    return;
+  }
+
+  if (millis() - previousMillisNG >= intervalNG)
+  {
+    previousMillisNG = millis();
+    if (ngToneCount < 4)
+    {
+      tone(BUZZER_PIN, 2000, 1000);
+      ngToneCount++;
+    }
+    else
+    {
+      status_test = NO_TEST;
+      ngToneCount = 0;
+    }
+  }
+  else if (millis() < previousMillisNG)
+  {
+    previousMillisNG = millis();
+  }
+}
+
+void handlePassTone()
+{
+  if (status_test != PASS)
+  {
+    return;
+  }
+
+  if (millis() - previousMillisPASS >= intervalPASS)
+  {
+    previousMillisPASS = millis();
+    if (passToneCount < 2)
+    {
+      tone(BUZZER_PIN, 2200, 100);
+      passToneCount++;
+    }
+    else
+    {
+      status_test = NO_TEST;
+      passToneCount = 0;
+    }
+  }
+  else if (millis() < previousMillisPASS)
+  {
+    previousMillisPASS = millis();
   }
 }
 
@@ -188,26 +321,14 @@ void UpdateCalSTD(){
     if (cal_std[i] > Max) {
       Max = cal_std[i]; // Update max
     }
-    // Serial.print("cal_std ");
-    // Serial.println(cal_std[i]);
+
   }
-    Serial.println("====================================");
+    // Serial.println("====================================");
   // Calculate the center
   Center = (Max - Min) / 2;
   CalStdMin = Max-Center;
   CalStdMax = Max+Center;
 
-
-  Serial.print("Min: ");
-  Serial.println(Min);
-  Serial.print("Max: ");
-  Serial.println(Max);
-  Serial.print("Center: ");
-  Serial.println(Center);
-  Serial.print("CalStdMin: ");
-  Serial.println(CalStdMin);
-  Serial.print("CalStdMax: ");
-  Serial.println(CalStdMax);
 }
 void DisplayMenu() {
   unsigned long currentMillis = millis();
@@ -223,9 +344,15 @@ void DisplayMenu() {
   }
 
   if (currentMillis - lastDebounceTimeMillis > 100) {
+   if (stateRun && !stateStop && !stateComplete) {
+      String dataFinish = "$";
+      dataFinish += "time:";
+      dataFinish += String(millis() - timeStart);
+      dataFinish+= "#";
+      Serial.println(dataFinish);
+    }
     stateButtonPressed();
     resetStateButton();
-
     if (currentStateUp) {
       if (countPressUp > pressTime) {
         btnUpOnEventPressed();
@@ -257,6 +384,10 @@ void HomeDisplay() {
   // 1 Millisecond
   if (stateRun && !stateStop && !stateComplete) {
     line2 = String(countScrew) + "/"+String(SCW_count)+"PCS," + String(millis() - timeStart) + "ms";
+  }
+
+  if(!stateCensorOnStation){
+    line2 = "----------------";
   }
   updateLCD(line1, line2);
 }
@@ -489,13 +620,40 @@ void btnRunOnEventChange(bool state) {
   stateRun = !state;
   if (stateRun) {
     timeStart = millis();
+    LED_Controls(3);
+    // ngToneCount = 5;
+  }else{
+    int _timeTotal = (int)timeTotal;
+    if(_timeTotal < CalStdMin || _timeTotal > CalStdMax ){
+      LED_Controls(1);
+      // status_test = NG;
+    }else{
+      LED_Controls(0);
+    }
   }
 }
 
 void btnStopOnEventChange(bool state) {
   stateStop = !state;
 }
-
+void btnCensorOnStOnEventChange(bool state){
+  stateCensorOnStation = !state;
+  if(!stateCensorOnStation){
+    // 
+    if(countScrew >0 && countScrew == SCW_count){
+      status_test = PASS;
+      LED_Controls(2);
+    }else if(countScrew >0){
+      LED_Controls(1);
+      status_test = NG;
+      ngToneCount = 0;
+    }
+    countScrew = 0;
+  }else{
+    // LED_Controls(3);
+    ngToneCount = 5;
+  }
+}
 String currentLine1 = "                ";  //  16 ตัว
 String currentLine2 = "                ";  //  16 ตัว
 
