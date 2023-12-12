@@ -97,6 +97,11 @@ int Max = 0;
 int CalStdMin = 0;
 int CalStdMax= 0;
 
+uint8_t SCW_count = 0;
+uint8_t setSCW_count = 0;
+
+int setCalMin = 0;
+int setCalMax = 0;
 void readArray(int indexM, int* data, int dataSize = 10);
 
 void setup() {
@@ -121,19 +126,10 @@ void setup() {
 
   indexMenu = 0;
   indexModel = readInt8InEEPROM(0);
-  // readArray(indexModel,cal_std);
   UpdateCalSTD();
-
-  // for(int i = 0; i<10;i++){
-  //     Serial.print(i);
-  //     Serial.print(".cal_std[i]: ");
-  //     Serial.println(cal_std[i]);
-  // }
-
+  UpdateCountControlsSCW();
   model = readEEPROM(addressModel[indexModel], lengthNameModel);
-  // 1 Read EEPROM index model
-  // 2 Read EEPROM data of model by index
-  // 3 Set to variable model
+
 }
 void loop() {
   btnRun.update();
@@ -181,22 +177,37 @@ void loop() {
 }
 
 void UpdateCalSTD(){
-  readArray(indexModel,cal_std);
-  Min = cal_std[0];
-  Max = cal_std[0];
+  readArray(addressModel[indexModel],cal_std);
+  Min = 20000;
+  Max = 0;
   // Iterate through the array to find the min and max
-  for (int i = 1; i < 10; i++) {
+  for (int i = 0; i < 10; i++) {
     if (cal_std[i] < Min) {
       Min = cal_std[i]; // Update min
     }
     if (cal_std[i] > Max) {
       Max = cal_std[i]; // Update max
     }
+    // Serial.print("cal_std ");
+    // Serial.println(cal_std[i]);
   }
+    Serial.println("====================================");
   // Calculate the center
   Center = (Max - Min) / 2;
   CalStdMin = Max-Center;
   CalStdMax = Max+Center;
+
+
+  Serial.print("Min: ");
+  Serial.println(Min);
+  Serial.print("Max: ");
+  Serial.println(Max);
+  Serial.print("Center: ");
+  Serial.println(Center);
+  Serial.print("CalStdMin: ");
+  Serial.println(CalStdMin);
+  Serial.print("CalStdMax: ");
+  Serial.println(CalStdMax);
 }
 void DisplayMenu() {
   unsigned long currentMillis = millis();
@@ -234,7 +245,6 @@ void DisplayMenu() {
     } else {
       countPressDown = 0;
     }
-
     lastDebounceTimeMillis = currentMillis;
   } else if (currentMillis < lastDebounceTimeMillis) {
     lastDebounceTimeMillis = currentMillis;
@@ -243,13 +253,10 @@ void DisplayMenu() {
 
 void HomeDisplay() {
   String line1 = "MODEL " + model;
-  String line2 = String(countScrew) + "/10PCS," + String(timeTotal) + "ms";
+  String line2 = String(countScrew) + "/"+String(SCW_count)+"PCS," + String(timeTotal) + "ms";
   // 1 Millisecond
   if (stateRun && !stateStop && !stateComplete) {
-    Serial.print("Running: ");
-    Serial.print(millis() - timeStart);
-    Serial.println(" ms");
-    line2 = String(countScrew) + "/10PCS," + String(millis() - timeStart) + "ms";
+    line2 = String(countScrew) + "/"+String(SCW_count)+"PCS," + String(millis() - timeStart) + "ms";
   }
   updateLCD(line1, line2);
 }
@@ -382,11 +389,26 @@ void SettingMenu() {
 
       } else if (selectSubMenu1 == 3) {
         line1 = ">COUNT CONTROLS";
-        line2 = "               ";
-      } else if (selectSubMenu1 > 3) {
+        line2 = " CAL MIN:"+String(setCalMin);
+        if(selectSubMenu2>0){
+          line1 ="SCW COUNT:      "; 
+          line2 = String(setSCW_count)+" PCS";
+    
+        }
+      }
+       else if (selectSubMenu1 == 4) {
+        line1 = " COUNT CONTROLS";
+        line2 = ">CAL MIN:"+String(setCalMin);
+      
+      }
+       else if (selectSubMenu1 == 5) {
+        line1 = ">CAL MAX:"+String(setCalMax);
+        line2 = "                ";
+      } 
+      else if (selectSubMenu1 > 5) {
         selectSubMenu1 = 1;
       } else if (selectSubMenu1 < 1) {
-        selectSubMenu1 = 3;
+        selectSubMenu1 = 5;
       }
       // ---------------------  End Parameter By Model ------------------ //
     } else if (selectSubMenu == 1) {
@@ -559,6 +581,13 @@ void btnUpOnEventChange(bool state) {
 
 void btnUpOnEventPressed() {
   if (selectSubMenu2 > 0) {
+    // Count
+     if (selectMenu == 1 && selectSubMenu1 == 3){
+        setSCW_count++;
+        if(setSCW_count>50){
+          setSCW_count = 1;
+        }
+     }else
     // CAL
      if (selectMenu == 1 && selectSubMenu1 == 2){
       selectSubMenu2++;
@@ -576,7 +605,7 @@ void btnUpOnEventPressed() {
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1--;
     if (selectSubMenu1 < 1) {
-      selectSubMenu1 = 3;
+      selectSubMenu1 = 5;
     }
   } else if (selectSubMenu > 0) {
     selectSubMenu--;
@@ -607,6 +636,13 @@ void btnDownOnEventChange(bool state) {
 
 void btnDownOnEventPressed() {
   if (selectSubMenu2 > 0) {
+    // Count
+     if (selectMenu == 1 && selectSubMenu1 == 3){
+        setSCW_count--;
+        if(setSCW_count<1){
+          setSCW_count = 50;
+        }
+     }else
      if (selectMenu == 1 && selectSubMenu1 == 2){
       selectSubMenu2--;
       if(selectSubMenu2<1){
@@ -664,9 +700,25 @@ void btnEnterOnEventPressed() {
     selectSubMenu = 1;
   } else if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 == 0) {
     selectSubMenu1 = 1;
+    // Load data
+      readArray(addressModel[indexAddressModel],setCal_std);
+      int min =20000;
+      int max =0;
+      for (int i = 0; i < 10; i++) {
+          if (setCal_std[i] < min) {
+            min = setCal_std[i]; // Update min
+          }
+          if (setCal_std[i] > max) {
+            max = setCal_std[i]; // Update max
+          }
+        }
+      int center = (max - min) / 2;
+      setCalMin = max-center;
+      setCalMax = max+center;
   } else if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 > 0) {
     EnterSetName();
     EnterSetCalStd();
+    EnterSetCountControl();
   }
 }
 
@@ -676,8 +728,8 @@ void EnterSetName()
   // 
   if (selectSubMenu2 == 0) {
     selectSubMenu2 = 1;
-    model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
-    modelSetName = model;
+    modelSetName = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
+    // modelSetName = model;
     indexModelName = 0;
     resetIndexChar();
   } else if (selectSubMenu2 > 0) {
@@ -690,15 +742,18 @@ void EnterSetName()
         lcd.noBlink();
         lcd.noCursor();
         updateLCD("Save...........", "               ");
-        model = modelSetName;
+        // model = modelSetName;
         // Save to EEPROM
-        updateEEPROM(addressModel[indexAddressModel], model);
+        updateEEPROM(addressModel[indexAddressModel], modelSetName);
         // Read EEPROM
-        model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
+        if(indexAddressModel == indexModel){
+          model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
+        }
         delay(1000);
         // Update LCD
         updateLCD("Save Completed ", "               ");
         resetIndexChar();
+        selectSubMenu2 = 0;
       }
     }
   }
@@ -709,7 +764,8 @@ void EnterSetCalStd()
     if(selectSubMenu1 != 2) return;
     if(selectSubMenu2 == 0) 
     {
-      // Load data
+      
+      // Set 
       selectSubMenu2 = 1;
     } else if (selectSubMenu2 > 0) {
        updateLCD("Save...........", "               ");
@@ -722,9 +778,38 @@ void EnterSetCalStd()
          int address = getAddress(addressModel[indexAddressModel], i);
          // Update to EEPROM
          updateInt16ToEEPROM(address,_data);
+         // 
+         if(indexAddressModel == indexModel){
+           UpdateCalSTD();
+         }
       }
        delay(1000);
+       selectSubMenu2 = 0;
     }
+}
+
+void EnterSetCountControl(){
+  if(selectSubMenu1 != 3) return;
+
+  if(selectSubMenu2 == 0) 
+  {
+    setSCW_count = getCountControls(addressModel[indexAddressModel]);
+    // Set 
+    selectSubMenu2 = 1;
+  }else if (selectSubMenu2 > 0) {
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      uint8_t address = getAddress(addressModel[indexAddressModel],10);
+      updateEEPROM(address, setSCW_count);
+      if(indexAddressModel == indexModel){
+        UpdateCountControlsSCW();
+      }
+      delay(1000);
+      selectSubMenu2 = 0;
+  }
+}
+void UpdateCountControlsSCW(){
+  SCW_count = getCountControls(addressModel[indexModel]);
 }
 void resetIndexChar() {
   for (int i = 0; i < numChars; i++) {
@@ -827,7 +912,7 @@ int readInt16CInEEPROM(int index) {
 }
 
 void readArray(int indexM, int* data, int dataSize) {
-  int address = indexM + 11;
+  int address = indexM + 10;
   for (int i = 0;i < dataSize; i++) {
       data[i] = readInt16CInEEPROM(address);; // 
       address+=2; // Update address
@@ -835,8 +920,8 @@ void readArray(int indexM, int* data, int dataSize) {
 }
 int getAddress(int indexM, int index)
 {
-  // int baseAddress = indexM + 11;
-  int address = (indexM + 11) + (index * 2);
+  // int baseAddress = indexM + 10;
+  int address = (indexM + 10) + (index * 2);
   return address;
 }
 String readEEPROM(int index, int len){
@@ -845,4 +930,9 @@ String readEEPROM(int index, int len){
     data += char(EEPROM.read(index + i));
   }
   return data;
+}
+
+uint8_t getCountControls(int address){
+  int add = getAddress(address,10);
+  return readInt8InEEPROM(add);
 }
