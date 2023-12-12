@@ -53,18 +53,25 @@ const int pressTime = 1500;
 int countPressUp = 0;
 int countPressDown = 0;
 
-
 unsigned long timeStart = 0;
 unsigned long timeComplete = 0;
 unsigned long timeTotal = 0;
 unsigned long lastDebounceTime = 0;
 unsigned long lastDebounceTimeMillis = 0;
-uint8_t indexModel =0;
+uint8_t indexModel = 0;
+
 int addressModel[10] = { 1, 33, 65, 97, 129, 161, 193, 225, 257, 289 };
+
+// const int cal_std_max = 10;
+int cal_std[10] = {0,0,0,0,0,0,0,0,0,0};
+int setCal_std[10] = {0,0,0,0,0,0,0,0,0,0};
+uint8_t number_cal = 0;
+
 int indexAddressModel = 0;
 String model = "";
-int indexModelName = 0;
-uint8_t lengthNameModel = 8;  // 8 ตัวอักษร
+String modelSetName = "";
+int indexModelName = 0; // Index edit model name
+uint8_t lengthNameModel = 8;  // 8 Digit
 int countScrew = 0;
 
 int indexMenu = 0;
@@ -82,6 +89,16 @@ const char letters[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 
                          '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+' };
 int numChars = sizeof(letters) - 1;
 int indexChar = 0;
+
+int Min = 0;
+int Center = 0;
+int Max = 0;
+
+int CalStdMin = 0;
+int CalStdMax= 0;
+
+void readArray(int indexM, int* data, int dataSize = 10);
+
 void setup() {
   Serial.begin(115200);
   btnRun.setOnEventChange(btnRunOnEventChange);
@@ -93,16 +110,26 @@ void setup() {
   btnUp.setOnEventChange(btnUpOnEventChange);
   btnDown.setOnEventChange(btnDownOnEventChange);
   btnEnter.setOnEventChange(btnEnterOnEventChange);
+
   Serial.println("Start...");
   lcd.begin();
   lcd.clear();
   // Turn on the blacklight and print a message.
   lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("READY ...");
+  // lcd.setCursor(0, 0);
+  // lcd.print("READY...");
 
   indexMenu = 0;
-  indexModel = readEEPROM(0);
+  indexModel = readInt8InEEPROM(0);
+  // readArray(indexModel,cal_std);
+  UpdateCalSTD();
+
+  // for(int i = 0; i<10;i++){
+  //     Serial.print(i);
+  //     Serial.print(".cal_std[i]: ");
+  //     Serial.println(cal_std[i]);
+  // }
+
   model = readEEPROM(addressModel[indexModel], lengthNameModel);
   // 1 Read EEPROM index model
   // 2 Read EEPROM data of model by index
@@ -138,11 +165,38 @@ void loop() {
 
     // Update LCD
     // updateLCD("Completed: ", String(timeTotal) + " ms");
-
+    if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 2){
+        setCal_std[selectSubMenu2-1] = timeTotal;
+        selectSubMenu2++;
+        if(selectSubMenu2>10){
+          selectSubMenu2 = 1;
+          // Enter to Save
+          EnterSetCalStd();
+        }
+      }
     // Clear
     // timeTotal = 0;
     countScrew++;
   }
+}
+
+void UpdateCalSTD(){
+  readArray(indexModel,cal_std);
+  Min = cal_std[0];
+  Max = cal_std[0];
+  // Iterate through the array to find the min and max
+  for (int i = 1; i < 10; i++) {
+    if (cal_std[i] < Min) {
+      Min = cal_std[i]; // Update min
+    }
+    if (cal_std[i] > Max) {
+      Max = cal_std[i]; // Update max
+    }
+  }
+  // Calculate the center
+  Center = (Max - Min) / 2;
+  CalStdMin = Max-Center;
+  CalStdMax = Max+Center;
 }
 void DisplayMenu() {
   unsigned long currentMillis = millis();
@@ -200,7 +254,7 @@ void HomeDisplay() {
   updateLCD(line1, line2);
 }
 String getModelName(int index) {
-  if(index < 0 || index > 9){
+  if (index < 0 || index > 9) {
     return "";
   }
   return readEEPROM(addressModel[index], lengthNameModel);
@@ -213,10 +267,7 @@ void SettingMenu() {
     line1 = "SAVE...........";
     line2 = "               ";
     updateLCD(line1, line2);
-
-
     isSave = false;
-
     // clear menu setting
     selectMenu = 0;
     selectSubMenu = 0;
@@ -231,11 +282,11 @@ void SettingMenu() {
   }
   // --------------------------------- Select model ------------------------- //
   if (selectMenu == 0 && selectSubMenu > 0) {
-   if (selectSubMenu == 1) {
+    if (selectSubMenu == 1) {
       String model1 = getModelName(0);
       String model2 = getModelName(1);
       line1 = ">1.MODEL " + model1;
-      line2 = " 2.MODEL " + model2;      
+      line2 = " 2.MODEL " + model2;
     } else if (selectSubMenu == 2) {
       String model1 = getModelName(0);
       String model2 = getModelName(1);
@@ -295,42 +346,40 @@ void SettingMenu() {
 
     if (selectSubMenu1 > 0) {
       // ---------------------  Parameter By Model ------------------ //
+        // ---------------------  Name ------------------ //
       if (selectSubMenu1 == 1) {
         line1 = ">NAME";
         line2 = " CAL STD";
         if (selectSubMenu2 > 0) {
-          // lcd.cursor();
-          // indexModelName =9;
           lcd.setCursor(indexModelName, 1);
           lcd.cursor();
           lcd.blink();
           char buf[lengthNameModel + 1];
-
           for (int i = 0; i < lengthNameModel + 1; i++) {
-            buf[i] = "";
+            buf[i] = ' ';
           }
-
-          model.toCharArray(buf, lengthNameModel + 1);
+          modelSetName.toCharArray(buf, lengthNameModel + 1);
           buf[indexModelName] = letters[indexChar];
-          // Serial.println(buf);
-          model = String(buf);
-
-          // Serial.print("indexModelName: ");
-          // Serial.println(indexModelName);
-          // Serial.print("indexChar: ");
-          // Serial.println(indexChar);
-          // Serial.print("letters[indexChar]: ");
-          // Serial.println(letters[indexChar]);
-          // Serial.print("buf[indexModelName]: ");
-          // Serial.println(buf[indexModelName]);
-          // Serial.println(" --------------------- ");
-
+          modelSetName = String(buf);
           line1 = "MODEL NAME:";
-          line2 = model;
+          line2 = modelSetName;
         }
+        // --------------------- end Name ------------------ //
       } else if (selectSubMenu1 == 2) {
         line1 = " NAME";
         line2 = ">CAL STD";
+        if (selectSubMenu2 > 0) {
+            line1 = "CAL STD: "+String(selectSubMenu2)+"/10";
+            line2 = "              ";
+            // 
+             if (stateRun && !stateStop && !stateComplete) {
+              line2 = "TIME: "+ String(millis() - timeStart)+"ms";
+            }else{
+              line2 = "TIME: "+ String(setCal_std[selectSubMenu2-1])+"ms";
+            }            
+          }
+        // --------------------- end Name ------------------ //
+
       } else if (selectSubMenu1 == 3) {
         line1 = ">COUNT CONTROLS";
         line2 = "               ";
@@ -340,12 +389,11 @@ void SettingMenu() {
         selectSubMenu1 = 3;
       }
       // ---------------------  End Parameter By Model ------------------ //
-    } else
-    if (selectSubMenu == 1) {
+    } else if (selectSubMenu == 1) {
       String model1 = getModelName(0);
       String model2 = getModelName(1);
       line1 = ">1.MODEL " + model1;
-      line2 = " 2.MODEL " + model2;      
+      line2 = " 2.MODEL " + model2;
     } else if (selectSubMenu == 2) {
       String model1 = getModelName(0);
       String model2 = getModelName(1);
@@ -474,6 +522,7 @@ void btnEscOnEventChange(bool state) {
     Serial.println("ESC");
     tone(BUZZER_PIN, 2400, 100);
     // btnEscOnEventPressed();
+    lastDebounceTimeMillis = millis();
   } else {
     stateButtonReleased = true;
   }
@@ -494,14 +543,6 @@ void btnEscOnEventPressed() {
   } else if (indexMenu == 1) {
     indexMenu = 0;
   }
-
-  Serial.print("selectMenu: ");
-  Serial.println(selectMenu);
-  Serial.print("selectSubMenu: ");
-  Serial.println(selectSubMenu);
-  Serial.print("selectSubMenu1: ");
-  Serial.println(selectSubMenu1);
-  Serial.println(" --------------------- ");
 }
 void btnUpOnEventChange(bool state) {
   currentStateUp = !state;
@@ -510,6 +551,7 @@ void btnUpOnEventChange(bool state) {
     Serial.println("UP");
     tone(BUZZER_PIN, 2400, 100);
     // btnUpOnEventPressed();
+    lastDebounceTimeMillis = millis();
   } else {
     stateButtonReleased = true;
   }
@@ -517,6 +559,14 @@ void btnUpOnEventChange(bool state) {
 
 void btnUpOnEventPressed() {
   if (selectSubMenu2 > 0) {
+    // CAL
+     if (selectMenu == 1 && selectSubMenu1 == 2){
+      selectSubMenu2++;
+      if(selectSubMenu2>10){
+        selectSubMenu2 = 1;
+      }
+     }else
+     // Model Name
     if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
       indexChar++;
       if (indexChar > numChars) {
@@ -541,18 +591,6 @@ void btnUpOnEventPressed() {
       selectMenu = 2;
     }
   }
-
-  Serial.print("selectMenu: ");
-  Serial.println(selectMenu);
-  Serial.print("selectSubMenu: ");
-  Serial.println(selectSubMenu);
-  Serial.print("selectSubMenu1: ");
-  Serial.println(selectSubMenu1);
-  Serial.print("selectSubMenu2: ");
-  Serial.println(selectSubMenu2);
-  Serial.print("indexChar: ");
-  Serial.println(indexChar);
-  Serial.println(" --------------------- ");
 }
 void btnDownOnEventChange(bool state) {
   currentStateDown = !state;
@@ -561,6 +599,7 @@ void btnDownOnEventChange(bool state) {
     Serial.println("DOWN");
     tone(BUZZER_PIN, 2400, 100);
     // btnDownOnEventPressed();
+    lastDebounceTimeMillis = millis();
   } else {
     stateButtonReleased = true;
   }
@@ -568,6 +607,12 @@ void btnDownOnEventChange(bool state) {
 
 void btnDownOnEventPressed() {
   if (selectSubMenu2 > 0) {
+     if (selectMenu == 1 && selectSubMenu1 == 2){
+      selectSubMenu2--;
+      if(selectSubMenu2<1){
+        selectSubMenu2 = 10;
+      }
+     }else
     if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
       indexChar--;
       if (indexChar < 0) {
@@ -581,18 +626,14 @@ void btnDownOnEventPressed() {
   } else {
     selectMenu++;
   }
+}
 
-  Serial.print("selectMenu: ");
-  Serial.println(selectMenu);
-  Serial.print("selectSubMenu: ");
-  Serial.println(selectSubMenu);
-  Serial.print("selectSubMenu1: ");
-  Serial.println(selectSubMenu1);
-  Serial.print("selectSubMenu2: ");
-  Serial.println(selectSubMenu2);
-  Serial.print("indexChar: ");
-  Serial.println(indexChar);
-  Serial.println(" --------------------- ");
+void btnUpDownOnEventPressed() {
+  Serial.println("UP DOWN");
+  if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+    indexModelName = 0;
+    resetIndexChar();
+  }
 }
 void btnEnterOnEventChange(bool state) {
   currentStateEnter = !state;
@@ -601,6 +642,7 @@ void btnEnterOnEventChange(bool state) {
     Serial.println("ENTER");
     tone(BUZZER_PIN, 2400, 100);
     // btnEnterOnEventPressed();
+    lastDebounceTimeMillis = millis();
   } else {
     stateButtonReleased = true;
   }
@@ -623,33 +665,119 @@ void btnEnterOnEventPressed() {
   } else if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 == 0) {
     selectSubMenu1 = 1;
   } else if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 > 0) {
+    EnterSetName();
+    EnterSetCalStd();
+  }
+}
 
- 
-    // isSave = true;
-    if (selectSubMenu2 == 0) {
-      selectSubMenu2 = 1;
-      model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
-    } else if (selectSubMenu2 > 0) {
-      if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
-        indexModelName++;
-        if (indexModelName >= lengthNameModel) {
-          indexModelName = 0;
-          // Clear lcd
-          lcd.noBlink();
-          lcd.noCursor();
-          updateLCD("Save...        ", "               ");
-          // Save to EEPROM
-          updateEEPROM(addressModel[indexAddressModel], model);
-          // Read EEPROM
-          model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
-          delay(1000);
-          // Update LCD
-          updateLCD("Save Completed ", "               ");
-          
-        }
+void EnterSetName()
+{
+  if(selectSubMenu1 != 1) return;
+  // 
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
+    modelSetName = model;
+    indexModelName = 0;
+    resetIndexChar();
+  } else if (selectSubMenu2 > 0) {
+    if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      indexModelName++;
+      resetIndexChar();
+      if (indexModelName >= lengthNameModel) {
+        indexModelName = 0;
+        // Clear lcd
+        lcd.noBlink();
+        lcd.noCursor();
+        updateLCD("Save...........", "               ");
+        model = modelSetName;
+        // Save to EEPROM
+        updateEEPROM(addressModel[indexAddressModel], model);
+        // Read EEPROM
+        model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
+        delay(1000);
+        // Update LCD
+        updateLCD("Save Completed ", "               ");
+        resetIndexChar();
       }
     }
   }
+}
+
+void EnterSetCalStd()
+{
+    if(selectSubMenu1 != 2) return;
+    if(selectSubMenu2 == 0) 
+    {
+      // Load data
+      selectSubMenu2 = 1;
+    } else if (selectSubMenu2 > 0) {
+       updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      // int address = getAddress(addressModel[indexAddressModel], selectSubMenu2-1);
+    
+      for(int i = 0; i<10; i++)
+      {
+         int _data = setCal_std[i];
+         int address = getAddress(addressModel[indexAddressModel], i);
+         // Update to EEPROM
+         updateInt16ToEEPROM(address,_data);
+      }
+       delay(1000);
+    }
+}
+void resetIndexChar() {
+  for (int i = 0; i < numChars; i++) {
+    if (letters[i] == modelSetName[indexModelName]) {
+      indexChar = i;
+      break;
+    }
+  }
+}
+void stateButtonPressed() {
+  // 0 0 0 0
+  if (!stateEsc && !stateUp && !stateDown && !stateEnter) {
+    // not pressed
+    return;
+  } else
+    // 0 0 0 1
+    if (!stateEsc && !stateUp && !stateDown && stateEnter) {
+      btnEnterOnEventPressed();
+    } else
+      // 0 0 1 0
+      if (!stateEsc && !stateUp && stateDown && !stateEnter) {
+        btnDownOnEventPressed();
+      } else
+        // 0 0 1 1
+        if (!stateEsc && !stateUp && stateDown && stateEnter) {
+          // btnDownOnEventPressed();
+          // btnEnterOnEventPressed();
+        } else
+          // 0 1 0 0
+          if (!stateEsc && stateUp && !stateDown && !stateEnter) {
+            btnUpOnEventPressed();
+          } else
+            // 0 1 0 1
+            if (!stateEsc && stateUp && !stateDown && stateEnter) {
+              // btnUpOnEventPressed();
+              // btnEnterOnEventPressed();
+            } else
+              // 0 1 1 0
+              if (!stateEsc && stateUp && stateDown && !stateEnter) {
+                // btnUpOnEventPressed();
+                btnUpDownOnEventPressed();
+                // Serial.println("UP DOWN");
+              } else
+                // 0 1 1 1
+                if (!stateEsc && stateUp && stateDown && stateEnter) {
+                  // btnUpOnEventPressed();
+                  // btnDownOnEventPressed();
+                  // btnEnterOnEventPressed();
+                } else
+                  // 1 0 0 0
+                  if (stateEsc && !stateUp && !stateDown && !stateEnter) {
+                    btnEscOnEventPressed();
+                  }
 
   Serial.print("selectMenu: ");
   Serial.println(selectMenu);
@@ -663,66 +791,7 @@ void btnEnterOnEventPressed() {
   Serial.println(indexModelName);
   Serial.print("indexChar: ");
   Serial.println(indexChar);
-
   Serial.println(" --------------------- ");
-}
-
-void stateButtonPressed() {
-  // 0 0 0 0
-  if (!stateEsc && !stateUp && !stateDown && !stateEnter && stateButtonReleased) {
-    return;
-  }
-  // 0 0 0 1
-  if (!stateEsc && !stateUp && !stateDown && stateEnter) {
-    btnEnterOnEventPressed();
-    return;
-  }
-
-  // 0 0 1 0
-  if (!stateEsc && !stateUp && stateDown && !stateEnter) {
-    btnDownOnEventPressed();
-    return;
-  }
-  // 0 0 1 1
-  if (!stateEsc && !stateUp && stateDown && stateEnter) {
-    // btnDownOnEventPressed();
-    // btnEnterOnEventPressed();
-    return;
-  }
-
-  // 0 1 0 0
-  if (!stateEsc && stateUp && !stateDown && !stateEnter) {
-    btnUpOnEventPressed();
-    return;
-  }
-
-  // 0 1 0 1
-  if (!stateEsc && stateUp && !stateDown && stateEnter) {
-    // btnUpOnEventPressed();
-    // btnEnterOnEventPressed();
-    return;
-  }
-
-  // 0 1 1 0
-  if (!stateEsc && stateUp && stateDown && !stateEnter) {
-    // btnUpOnEventPressed();
-    // btnDownOnEventPressed();
-    return;
-  }
-
-  // 0 1 1 1
-  if (!stateEsc && stateUp && stateDown && stateEnter) {
-    // btnUpOnEventPressed();
-    // btnDownOnEventPressed();
-    // btnEnterOnEventPressed();
-    return;
-  }
-
-  // 1 0 0 0
-  if (stateEsc && !stateUp && !stateDown && !stateEnter) {
-    btnEscOnEventPressed();
-    return;
-  }
 }
 
 void resetStateButton() {
@@ -730,10 +799,13 @@ void resetStateButton() {
   stateUp = false;
   stateDown = false;
   stateEnter = false;
-  // stateButtonReleased = false;
 }
 void updateEEPROM(int index, uint8_t data) {
   EEPROM.update(index, data);
+}
+void updateInt16ToEEPROM(int address, int data) {
+  EEPROM.update(address, data >> 8); // Store the higher byte
+  EEPROM.update(address + 1, data & 0xFF); // Store the lower byte
 }
 
 void updateEEPROM(int index, String data) {
@@ -743,11 +815,31 @@ void updateEEPROM(int index, String data) {
   }
 }
 
-uint8_t readEEPROM(int index) {
+uint8_t readInt8InEEPROM(int index) {
   return EEPROM.read(index);
 }
 
-String readEEPROM(int index, int len) {
+int readInt16CInEEPROM(int index) {
+  int data = 0;
+  data = EEPROM.read(index) << 8; // Read the higher byte and shift it
+  data += EEPROM.read(index + 1); // Read the lower byte and add it
+  return data;
+}
+
+void readArray(int indexM, int* data, int dataSize) {
+  int address = indexM + 11;
+  for (int i = 0;i < dataSize; i++) {
+      data[i] = readInt16CInEEPROM(address);; // 
+      address+=2; // Update address
+  }
+}
+int getAddress(int indexM, int index)
+{
+  // int baseAddress = indexM + 11;
+  int address = (indexM + 11) + (index * 2);
+  return address;
+}
+String readEEPROM(int index, int len){
   String data = "";
   for (int i = 0; i < len; i++) {
     data += char(EEPROM.read(index + i));
