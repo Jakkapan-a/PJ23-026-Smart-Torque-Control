@@ -62,10 +62,10 @@ int DURATION = 200;
 
 // -------------------- Global Variables -------------------- //
 
-unsigned long previousMillisPASS = 0;
+uint32_t previousMillisPASS = 0;
 const long intervalPASS = 200;
 
-unsigned long previousMillisNG = 0;
+uint32_t previousMillisNG = 0;
 const long intervalNG = 100;
 
 bool stateComplete = false;
@@ -88,13 +88,13 @@ const int pressTime = 1500;
 int countPressUp = 0;
 int countPressDown = 0;
 
-unsigned long timeStart = 0;
-unsigned long timeComplete = 0;
-unsigned long timeTotal = 0;
-unsigned long lastDebounceTime = 0;
-unsigned long lastDebounceTimeMillis = 0;
+uint32_t timeStart = 0;
+uint32_t timeComplete = 0;
+uint32_t timeTotal = 0;
+uint32_t lastDebounceTime = 0;
+uint32_t lastDebounceTimeMillis = 0;
 uint8_t indexModel = 0;
-
+uint32_t lastTimeTone = 0;
 int addressModel[10] = { 1, 33, 65, 97, 129, 161, 193, 225, 257, 289 };
 
 // const int cal_std_max = 10;
@@ -107,7 +107,15 @@ String model = "";
 String modelSetName = "";
 int indexModelName = 0;         // Index edit model name
 uint8_t lengthNameModel = 5;    // 5 Digit
+
+String _strCalMin = "";
+String _strCalMax = "";
+
+int indexNumber = 0;
+uint8_t lengthNumber = 5;       // 5 Digit
+
 uint8_t countScrew = 0;
+
 
 int indexMenu = 0;
 int selectMenu = 0;
@@ -122,21 +130,29 @@ const char letters[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 
                          'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
                          '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                          '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+' };
+
+
+                         
 int numChars = sizeof(letters) - 1;
 int indexChar = 0;
+
+const char lettersNumber[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+int numCharsNumber = sizeof(lettersNumber) - 1;
+int indexCharNumber = 0;
 
 int Min = 0;
 int Center = 0;
 int Max = 0;
 
-int CalStdMin = 0;
-int CalStdMax= 0;
+uint16_t CalStdMin = 0;
+uint16_t CalStdMax= 0;
 
 uint8_t SCW_count = 0;
 uint8_t setSCW_count = 0;
 
-int setCalMin = 0;
-int setCalMax = 0;
+uint16_t setCalMin = 0;
+uint16_t setCalMax = 0;
+
 void readArray(int indexM, int* data, int dataSize = 10);
 int NG_count = 0;
 void setup() {
@@ -161,8 +177,9 @@ void setup() {
   indexMenu = 0;
   indexModel = readInt8InEEPROM(0);
   UpdateCountControlsSCW();
-  UpdateCalSTD();
   model = readEEPROM(addressModel[indexModel], lengthNameModel);
+  
+  UpdateCalSTD(getMin(addressModel[indexModel]),getMax(addressModel[indexModel]));
 }
 
 void loop() {
@@ -174,8 +191,8 @@ void loop() {
   btnEnter.update();
   btnCensorOnSt.update();
   DisplayMenu();
-  handlePassTone();
-  handleNGTone();
+  // handlePassTone();
+  // handleNGTone();
 
   if (!stateRun && !stateStop && stateComplete) {
     stateComplete = false;
@@ -187,7 +204,6 @@ void loop() {
     timeComplete = millis();
     timeTotal = timeComplete - timeStart;
     countScrew++;
-    int _timeTotal = (int)timeTotal;
 
     String dataFinish = "$";
     dataFinish += "SCW:";
@@ -197,7 +213,8 @@ void loop() {
     dataFinish += String(timeTotal);
     // RESULT
     dataFinish += ",";
-    if(_timeTotal < CalStdMin || _timeTotal > CalStdMax ){
+
+    if(timeTotal < static_cast<uint32_t>(CalStdMin) || timeTotal > static_cast<uint32_t>(CalStdMax)){
       LED_Controls(1);
       status_test = NG;
       ngToneCount = 0;
@@ -254,89 +271,10 @@ void LED_Controls(uint8_t state){
   }
 }
 
-
-void handleNGTone()
+void UpdateCalSTD(uint16_t _min, uint16_t _max)
 {
-  if (status_test != NG)
-  {
-    return;
-  }
-  
-  if(indexMenu != 0){
-    status_test = NO_TEST;
-    return;
-  }
-
-  if (millis() - previousMillisNG >= intervalNG)
-  {
-    previousMillisNG = millis();
-    if (ngToneCount < 15)
-    {
-      tone(BUZZER_PIN, 2000, (int)(intervalNG/2));
-      ngToneCount++;
-    }
-    else
-    {
-      status_test = NO_TEST;
-      ngToneCount = 0;
-    }
-  }
-  else if (millis() < previousMillisNG)
-  {
-    previousMillisNG = millis();
-  }
-}
-
-void handlePassTone()
-{
-  if (status_test != PASS)
-  {
-    return;
-  }
-
-  if(indexMenu != 0){
-    return;
-  }
-
-  if (millis() - previousMillisPASS >= intervalPASS)
-  {
-    previousMillisPASS = millis();
-    if (passToneCount < 2)
-    {
-      tone(BUZZER_PIN, 2200, (int)(intervalPASS/2));
-      passToneCount++;
-    }
-    else
-    {
-      status_test = NO_TEST;
-      passToneCount = 0;
-    }
-  }
-  else if (millis() < previousMillisPASS)
-  {
-    previousMillisPASS = millis();
-  }
-}
-
-void UpdateCalSTD(){
-  // readArray(addressModel[indexModel],cal_std);
-  // Min = 20000;
-  // Max = 0;
-  // // Iterate through the array to find the min and max
-  // for (int i = 0; i < 10; i++) {
-  //   if (cal_std[i] < Min) {
-  //     Min = cal_std[i]; // Update min
-  //   }
-  //   if (cal_std[i] > Max) {
-  //     Max = cal_std[i]; // Update max
-  //   }
-
-  // }
-    // Serial.println("====================================");
-  // Calculate the center
-  // Center = (Max - Min) / 2;
-  CalStdMin = 800;// Min-Center;
-  CalStdMax = 1200; // Max+Center;
+  CalStdMin = _min;// Min-Center;
+  CalStdMax = _max; // Max+Center;
 }
 bool isRun =false;
 void DisplayMenu() {
@@ -398,6 +336,24 @@ void DisplayMenu() {
   }
 }
 
+void ToneFun(unsigned long _toneTime, int _toneFreq, int _tonePercent, int &totalTone) {
+  if (totalTone <= 0) {
+    return;
+  }
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastTimeTone > _toneTime) {
+    if (_tonePercent > 0) {
+      int p = (int)(_tonePercent * _toneTime / 100);
+      tone(BUZZER_PIN, _toneFreq, p);
+      totalTone--;
+    }
+    lastTimeTone = currentMillis;
+  } else if (currentMillis < lastTimeTone) {
+    lastTimeTone = currentMillis;
+  }
+}
+
+
 void HomeDisplay() {
   String line1 = "MODEL " + model;
   String line2 = String(countScrew) + "/"+String(SCW_count)+"PCS," + String(timeTotal) + "ms";
@@ -440,6 +396,7 @@ void SettingMenu() {
     selectSubMenu1 = 0;
     selectSubMenu2 = 0;
     indexModelName = 0;
+    indexNumber = 0;
     indexChar = 0;
     lcd.noBlink();
     lcd.noCursor();
@@ -515,7 +472,7 @@ void SettingMenu() {
         // ---------------------  Name ------------------ //
       if (selectSubMenu1 == 1) {
         line1 = ">NAME";
-        line2 = " CAL STD";
+        line2 = " COUNT CONTROLS";
         if (selectSubMenu2 > 0) {
           lcd.setCursor(indexModelName, 1);
           lcd.cursor();
@@ -533,38 +490,85 @@ void SettingMenu() {
         // --------------------- end Name ------------------ //
       } else if (selectSubMenu1 == 2) {
         line1 = " NAME";
-        line2 = ">CAL STD";
+        line2 = ">COUNT CONTROLS";
         if (selectSubMenu2 > 0) {
-            line1 = "CAL STD: "+String(selectSubMenu2)+"/10";
-            line2 = "              ";
-            // 
-             if (stateRun && !stateStop && !stateComplete) {
-              line2 = "TIME: "+ String(millis() - timeStart)+"ms";
-            }else{
-              line2 = "TIME: "+ String(setCal_std[selectSubMenu2-1])+"ms";
-            }            
+          if(selectSubMenu2>0){
+            line1 ="SCW COUNT:      "; 
+            line2 = String(setSCW_count)+" PCS";
           }
-        // --------------------- end Name ------------------ //
+        }
+        //     line1 = "CAL STD: "+String(selectSubMenu2)+"/10";
+        //     line2 = "              ";
+        //     // 
+        //      if (stateRun && !stateStop && !stateComplete) {
+        //       line2 = "TIME: "+ String(millis() - timeStart)+"ms";
+        //     }else{
+        //       line2 = "TIME: "+ String(setCal_std[selectSubMenu2-1])+"ms";
+        //     }            
+        //   }
 
+        // --------------------- end Name ------------------ //
       } else if (selectSubMenu1 == 3) {
-        line1 = ">COUNT CONTROLS";
-        line2 = " CAL MIN:"+String(setCalMin);
-        if(selectSubMenu2>0){
-          line1 ="SCW COUNT:      "; 
-          line2 = String(setSCW_count)+" PCS";
-    
+        line1 = ">MIN:"+String(setCalMin);
+        line2 = " MAX:"+String(setCalMax);
+        if (selectSubMenu2 > 0) {
+
+          // indexNumber
+          lcd.setCursor(indexNumber, 1);
+          lcd.cursor();
+          lcd.blink();
+
+          char buf[lengthNumber + 1];
+          for (int i = 0; i < lengthNumber + 1; i++) {
+            buf[i] = ' ';
+          }
+          
+          _strCalMin = ConvertNumberToString(setCalMin);
+
+          _strCalMin.toCharArray(buf, lengthNumber + 1);
+          
+          buf[indexNumber] = lettersNumber[indexCharNumber];
+
+          // unsigned int
+          String bufString = String(buf); // Create a String object from the char array
+          setCalMin = ConvertStringToNumber(bufString);//bufString.toInt(); // Convert the String to an integer
+          
+          line1 = "SET MIN:      ";
+          line2 = ConvertNumberToString(setCalMin) +" ms";
         }
       }
        else if (selectSubMenu1 == 4) {
-        line1 = " COUNT CONTROLS";
-        line2 = ">CAL MIN:"+String(setCalMin);
-      
+        line1 = " MIN:"+String(setCalMin);
+        line2 = ">MAX:"+String(setCalMax);
+        if (selectSubMenu2 > 0) {
+
+          // indexNumber
+          lcd.setCursor(indexNumber, 1);
+          lcd.cursor();
+          lcd.blink();
+
+          char buf[lengthNumber + 1];
+          for (int i = 0; i < lengthNumber + 1; i++) {
+            buf[i] = ' ';
+          }
+          
+          _strCalMax = ConvertNumberToString(setCalMax);
+
+          _strCalMax.toCharArray(buf, lengthNumber + 1);
+          
+          buf[indexNumber] = lettersNumber[indexCharNumber];
+
+          // unsigned int
+          String bufString = String(buf); // Create a String object from the char array
+          setCalMax = ConvertStringToNumber(bufString);//bufString.toInt(); // Convert the String to an integer
+          
+          line1 = "SET MAX:      ";
+          line2 = ConvertNumberToString(setCalMax) +" ms";
+          
+        }
       }
-       else if (selectSubMenu1 == 5) {
-        line1 = ">CAL MAX:"+String(setCalMax);
-        line2 = "                ";
-      } 
-      else if (selectSubMenu1 > 5) {
+      // ---------------------  End Parameter By Model ------------------ //
+      else if (selectSubMenu1 > 4) {
         selectSubMenu1 = 1;
       } else if (selectSubMenu1 < 1) {
         selectSubMenu1 = 5;
@@ -644,6 +648,27 @@ void SettingMenu() {
   }
   updateLCD(line1, line2);
 }
+
+String ConvertNumberToString(uint16_t number) {
+  String str = "";
+  if (number < 10) {
+    str = "0000" + String(number);
+  } else if (number < 100) {
+    str = "000" + String(number);
+  } else if (number < 1000) {
+    str = "00" + String(number);
+  } else if (number < 10000) {
+    str = "0" + String(number);
+  } else {
+    str = String(number);
+  }
+  return str;
+}
+
+uint16_t ConvertStringToNumber(String str) {
+  return (uint16_t)str.toInt();
+}
+
 void btnRunOnEventChange(bool state) {
   stateRun = !state;
   if (stateRun) {
@@ -651,8 +676,8 @@ void btnRunOnEventChange(bool state) {
     LED_Controls(3);
     // ngToneCount = 5;
   }else{
-    int _timeTotal = (int)timeTotal;
-    if(_timeTotal < CalStdMin || _timeTotal > CalStdMax ){
+    // int _timeTotal = (int)timeTotal;
+    if(timeTotal < static_cast<uint32_t>(CalStdMin) || timeTotal > static_cast<uint32_t>(CalStdMax) ){
       LED_Controls(1);
       // status_test = NG;
     }else{
@@ -744,8 +769,6 @@ void btnEscOnEventChange(bool state) {
 void btnEscOnEventPressed() {
   if (selectSubMenu2 > 0) {
     selectSubMenu2 = 0;
-    lcd.noBlink();
-    lcd.noCursor();
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1 = 0;
   } else if (selectSubMenu > 0) {
@@ -757,6 +780,8 @@ void btnEscOnEventPressed() {
   } else if (indexMenu == 1) {
     indexMenu = 0;
   }
+  lcd.noBlink();
+  lcd.noCursor();
 }
 void btnUpOnEventChange(bool state) {
   currentStateUp = !state;
@@ -773,19 +798,29 @@ void btnUpOnEventChange(bool state) {
 
 void btnUpOnEventPressed() {
   if (selectSubMenu2 > 0) {
-    // Count
-     if (selectMenu == 1 && selectSubMenu1 == 3){
-        setSCW_count++;
+    // MIN MAX
+     if (selectMenu == 1 && (selectSubMenu1 == 3 || selectSubMenu1 == 4)){
+      indexCharNumber++;
+      if (indexCharNumber > numCharsNumber) {
+        indexCharNumber = 0;
+      }
+
+      if(indexNumber == 0 && indexCharNumber > 5){
+        indexCharNumber = 0;
+      }
+
+     }else
+    // SCW_count
+     if (selectMenu == 1 && selectSubMenu1 == 2){
+      // selectSubMenu2++;
+      // if(selectSubMenu2>10){
+      //   selectSubMenu2 = 1;
+      // }
+       setSCW_count++;
         if(setSCW_count>50){
           setSCW_count = 1;
         }
-     }else
-    // CAL
-     if (selectMenu == 1 && selectSubMenu1 == 2){
-      selectSubMenu2++;
-      if(selectSubMenu2>10){
-        selectSubMenu2 = 1;
-      }
+
      }else
      // Model Name
     if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
@@ -829,17 +864,22 @@ void btnDownOnEventChange(bool state) {
 void btnDownOnEventPressed() {
   if (selectSubMenu2 > 0) {
     // Count
-     if (selectMenu == 1 && selectSubMenu1 == 3){
-        setSCW_count--;
+     if (selectMenu == 1 && (selectSubMenu1 == 3 || selectSubMenu1 == 4)){
+      indexCharNumber--;
+      if (indexCharNumber < 0) {
+        indexCharNumber = numCharsNumber;
+      }
+
+      if(indexNumber == 0 && indexCharNumber > 5){
+        indexCharNumber = 5;
+      }
+
+     }else
+     if (selectMenu == 1 && selectSubMenu1 == 2){
+       setSCW_count--;
         if(setSCW_count<1){
           setSCW_count = 50;
         }
-     }else
-     if (selectMenu == 1 && selectSubMenu1 == 2){
-      selectSubMenu2--;
-      if(selectSubMenu2<1){
-        selectSubMenu2 = 10;
-      }
      }else
     if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
       indexChar--;
@@ -861,7 +901,16 @@ void btnUpDownOnEventPressed() {
   if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
     indexModelName = 0;
     resetIndexChar();
+  }else 
+  if(selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 3){
+    indexNumber = 0;
+    resetIndexCharNumber(ConvertNumberToString(setCalMin));
+  }if(selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 4){
+    indexNumber = 0;
+    resetIndexCharNumber(ConvertNumberToString(setCalMax));
   }
+
+
 }
 void btnEnterOnEventChange(bool state) {
   currentStateEnter = !state;
@@ -890,27 +939,18 @@ void btnEnterOnEventPressed() {
     model = readEEPROM(addressModel[index], lengthNameModel);
   } else if (selectMenu == 1 && selectSubMenu == 0) {
     selectSubMenu = 1;
-  } else if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 == 0) {
-    selectSubMenu1 = 1;
-    // Load data
-      // readArray(addressModel[indexAddressModel],setCal_std);
-      // int min =20000;
-      // int max =0;
-      // for (int i = 0; i < 10; i++) {
-      //     if (setCal_std[i] < min) {
-      //       min = setCal_std[i]; // Update min
-      //     }
-      //     if (setCal_std[i] > max) {
-      //       max = setCal_std[i]; // Update max
-      //     }
-      //   }
-      // int center = (max - min) / 2;
-      setCalMin = min-center;
-      setCalMax = max+center;
+  } else 
+  
+  if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 == 0) {
+      selectSubMenu1 = 1;
+      setCalMin = getMin(addressModel[indexAddressModel]);
+      setCalMax = getMax(addressModel[indexAddressModel]);
   } else if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 > 0) {
     EnterSetName();
-    EnterSetCalStd();
+    // EnterSetCalStd();
     EnterSetCountControl();
+    EnterMin();
+    EnterMax();
   }
 }
 
@@ -930,9 +970,7 @@ void EnterSetName()
       resetIndexChar();
       if (indexModelName >= lengthNameModel) {
         indexModelName = 0;
-        // Clear lcd
-        lcd.noBlink();
-        lcd.noCursor();
+
         updateLCD("Save...........", "               ");
         // model = modelSetName;
         // Save to EEPROM
@@ -942,6 +980,9 @@ void EnterSetName()
           model = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
         }
         delay(1000);
+        // Clear lcd
+        lcd.noBlink();
+        lcd.noCursor();
         // Update LCD
         updateLCD("Save Completed ", "               ");
         resetIndexChar();
@@ -956,7 +997,6 @@ void EnterSetCalStd()
     if(selectSubMenu1 != 2) return;
     if(selectSubMenu2 == 0) 
     {
-      
       // Set 
       selectSubMenu2 = 1;
     } else if (selectSubMenu2 > 0) {
@@ -964,24 +1004,24 @@ void EnterSetCalStd()
       // Save to EEPROM
       // int address = getAddress(addressModel[indexAddressModel], selectSubMenu2-1);
     
-      for(int i = 0; i<10; i++)
-      {
-         int _data = setCal_std[i];
-         int address = getAddress(addressModel[indexAddressModel], i);
-         // Update to EEPROM
-         updateInt16ToEEPROM(address,_data);
-         // 
-         if(indexAddressModel == indexModel){
-           UpdateCalSTD();
-         }
-      }
+      // for(int i = 0; i<10; i++)
+      // {
+      //    int _data = setCal_std[i];
+      //    int address = getAddress(addressModel[indexAddressModel], i);
+      //    // Update to EEPROM
+      //    updateInt16ToEEPROM(address,_data);
+      //    // 
+      //    if(indexAddressModel == indexModel){
+      //      UpdateCalSTD();
+      //    }
+      // }
        delay(1000);
        selectSubMenu2 = 0;
     }
 }
 
 void EnterSetCountControl(){
-  if(selectSubMenu1 != 3) return;
+  if(selectSubMenu1 != 2) return;
 
   if(selectSubMenu2 == 0) 
   {
@@ -1000,9 +1040,68 @@ void EnterSetCountControl(){
       selectSubMenu2 = 0;
   }
 }
+
+void EnterMin(){
+  if(selectSubMenu1 != 3) return;
+  if(selectSubMenu2 == 0) 
+  {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    setCalMin = getMin(addressModel[indexAddressModel]);
+        
+    indexNumber = 0;
+    resetIndexCharNumber(ConvertNumberToString(setCalMin));
+
+  }else if (selectSubMenu2 > 0) {
+      indexNumber++;
+      resetIndexCharNumber(ConvertNumberToString(setCalMin));
+      if (indexNumber >= lengthNumber) {
+        indexNumber = 0;
+        updateLCD("Save...........", "               ");
+        // Save to EEPROM
+        uint8_t address = getAddress(addressModel[indexAddressModel],0);
+        updateInt16ToEEPROM(address, setCalMin);
+        if(indexAddressModel == indexModel){
+            CalStdMin = setCalMin;
+        }
+        delay(1000);
+        selectSubMenu2 = 0;
+      }
+  }
+}
+
+void EnterMax(){
+  if(selectSubMenu1 != 4) return;
+  if(selectSubMenu2 == 0) 
+  {
+    setCalMax = getMax(addressModel[indexAddressModel]);
+    // Set 
+    selectSubMenu2 = 1;
+
+    indexNumber = 0;
+    resetIndexCharNumber(ConvertNumberToString(setCalMax));
+  }else if (selectSubMenu2 > 0) {
+      indexNumber++;
+      resetIndexCharNumber(ConvertNumberToString(setCalMax));
+      if (indexNumber >= lengthNumber) {
+        indexNumber = 0;
+        updateLCD("Save...........", "               ");
+        // Save to EEPROM
+        uint8_t address = getAddress(addressModel[indexAddressModel],1);
+        updateInt16ToEEPROM(address, setCalMax);
+        if(indexAddressModel == indexModel){
+            CalStdMax = setCalMax;
+        }
+        delay(1000);
+        selectSubMenu2 = 0;
+      }
+  }
+}
+
 void UpdateCountControlsSCW(){
   SCW_count = getCountControls(addressModel[indexModel]);
 }
+
 void resetIndexChar() {
   for (int i = 0; i < numChars; i++) {
     if (letters[i] == modelSetName[indexModelName]) {
@@ -1011,6 +1110,30 @@ void resetIndexChar() {
     }
   }
 }
+
+
+// void resetIndexCharNumber() {
+//   String _calMin = ConvertNumberToString(setCalMin);
+//   for (int i = 0; i < numCharsNumber; i++) {
+//     if (lettersNumber[i] == _calMin[indexNumber]) {
+//       indexCharNumber = i;
+//       break;
+//     }
+//   }
+// }
+
+
+void resetIndexCharNumber(String _cal) {
+  //String _calMax = ConvertNumberToString(setCalMax);
+  for (int i = 0; i < numCharsNumber; i++) {
+    if (lettersNumber[i] == _cal[indexNumber]) {
+      indexCharNumber = i;
+      break;
+    }
+  }
+}
+
+
 void stateButtonPressed() {
   // 0 0 0 0
   if (!stateEsc && !stateUp && !stateDown && !stateEnter) {
@@ -1068,6 +1191,10 @@ void stateButtonPressed() {
   Serial.println(indexModelName);
   Serial.print("indexChar: ");
   Serial.println(indexChar);
+  Serial.print("indexCharNumber: ");
+  Serial.println(indexCharNumber);
+  Serial.print("indexNumber: ");
+  Serial.println(indexNumber);
   Serial.println(" --------------------- ");
 }
 
@@ -1080,7 +1207,7 @@ void resetStateButton() {
 void updateEEPROM(int index, uint8_t data) {
   EEPROM.update(index, data);
 }
-void updateInt16ToEEPROM(int address, int data) {
+void updateInt16ToEEPROM(int address, uint16_t data) {
   EEPROM.update(address, data >> 8); // Store the higher byte
   EEPROM.update(address + 1, data & 0xFF); // Store the lower byte
 }
@@ -1096,20 +1223,22 @@ uint8_t readInt8InEEPROM(int index) {
   return EEPROM.read(index);
 }
 
-int readInt16CInEEPROM(int index) {
+uint16_t readInt16CInEEPROM(int index) {
   int data = 0;
   data = EEPROM.read(index) << 8; // Read the higher byte and shift it
-  data += EEPROM.read(index + 1); // Read the lower byte and add it
+  data |= EEPROM.read(index + 1); // Read the lower byte and OR it
   return data;
 }
 
-void readArray(int indexM, int* data, int dataSize) {
-  int address = indexM + 10;
-  for (int i = 0;i < dataSize; i++) {
-      data[i] = readInt16CInEEPROM(address);; // 
-      address+=2; // Update address
-  }
-}
+// void readArray(int indexM, int* data, int dataSize) {
+//   int address = indexM + 10;
+//   for (int i = 0;i < dataSize; i++) {
+//       data[i] = readInt16CInEEPROM(address);; // 
+//       address+=2; // Update address
+//   }
+// }
+
+
 int getAddress(int indexM, int index)
 {
   // int baseAddress = indexM + 10;
@@ -1127,4 +1256,14 @@ String readEEPROM(int index, int len){
 uint8_t getCountControls(int address){
   int add = getAddress(address,10);
   return readInt8InEEPROM(add);
+}
+
+uint16_t getMin(int address){
+  int add = getAddress(address,0);
+  return readInt16CInEEPROM(add);
+}
+
+uint16_t getMax(int address){
+  int add = getAddress(address,1);
+  return readInt16CInEEPROM(add);
 }
