@@ -53,8 +53,11 @@ enum STATUS_TEST
 
 STATUS_TEST status_test = NO_TEST;
 
-int passToneCount = 0;
-int ngToneCount = 0;
+uint8_t passToneCount = 0;
+uint8_t totalTonePASS = 2;
+
+uint8_t ngToneCount = 0;
+uint8_t totalToneNG = 15;
 
 #define BUZZER_PIN 2
 int TONE = 2000;
@@ -62,11 +65,11 @@ int DURATION = 200;
 
 // -------------------- Global Variables -------------------- //
 
-uint32_t previousMillisPASS = 0;
-const long intervalPASS = 200;
+// uint32_t previousMillisPASS = 0;
+// const long intervalPASS = 200;
 
-uint32_t previousMillisNG = 0;
-const long intervalNG = 100;
+// uint32_t previousMillisNG = 0;
+// const long intervalNG = 100;
 
 bool stateComplete = false;
 bool stateRun = false;
@@ -191,6 +194,15 @@ void loop() {
   btnEnter.update();
   btnCensorOnSt.update();
   DisplayMenu();
+
+   if(stateCensorOnStation && ngToneCount > 1){
+    ngToneCount = totalToneNG;
+  }
+
+  ToneFun(currentMillis, 200, 2000, 50, passToneCount); //
+  ToneFun(currentMillis, 100, 2000, 50, ngToneCount);
+
+  
   // handlePassTone();
   // handleNGTone();
 
@@ -217,7 +229,7 @@ void loop() {
     if(timeTotal < static_cast<uint32_t>(CalStdMin) || timeTotal > static_cast<uint32_t>(CalStdMax)){
       LED_Controls(1);
       status_test = NG;
-      ngToneCount = 0;
+      ngToneCount = totalToneNG;
       NG_count++;
       // countScrew--;
       dataFinish +="RESULT:NG";
@@ -225,7 +237,7 @@ void loop() {
     if(countScrew > SCW_count){
       LED_Controls(1);
       status_test = NG;
-      ngToneCount = 0;
+      ngToneCount = totalToneNG;
       dataFinish +="RESULT:NG";
     }else
     {
@@ -280,9 +292,7 @@ bool isRun =false;
 void DisplayMenu() {
   unsigned long currentMillis = millis();
   if (currentMillis - lastDebounceTime > 10) {
-    if (indexMenu == 0) {
-      HomeDisplay();
-    } else if (indexMenu == 1) {
+   if (indexMenu == 1) {
       SettingMenu();
     }
     lastDebounceTime = currentMillis;
@@ -291,22 +301,26 @@ void DisplayMenu() {
   }
 
   if (currentMillis - lastDebounceTimeMillis > 100) {
-   if (stateRun && !stateStop && !stateComplete && stateCensorOnStation) {
-      String dataRun = "$";
-      dataRun += "SCW:";
-      dataRun += String(countScrew);
-      dataRun+= ",";
-      dataRun += "RUN:";
-      dataRun += String(millis() - timeStart);
-      dataRun+= "#";
-      Serial.println(dataRun);
-      isRun = true;
-    }else if(isRun &&!stateRun && !stateStop && !stateComplete && stateCensorOnStation){
-      isRun = false;
-      String dataRun = "$";
-      dataRun += "STOP:0";
-      dataRun+= "#";
-      Serial.println(dataRun);
+  //  if (stateRun && !stateStop && !stateComplete && stateCensorOnStation) {
+  //     String dataRun = "$";
+  //     dataRun += "SCW:";
+  //     dataRun += String(countScrew);
+  //     dataRun+= ",";
+  //     dataRun += "RUN:";
+  //     dataRun += String(millis() - timeStart);
+  //     dataRun+= "#";
+  //     Serial.println(dataRun);
+  //     isRun = true;
+  //   }else if(isRun &&!stateRun && !stateStop && !stateComplete && stateCensorOnStation){
+  //     isRun = false;
+  //     String dataRun = "$";
+  //     dataRun += "STOP:0";
+  //     dataRun+= "#";
+  //     Serial.println(dataRun);
+  //   }
+
+    if (indexMenu == 0) {
+      HomeDisplay();
     }
 
     stateButtonPressed();
@@ -334,22 +348,24 @@ void DisplayMenu() {
   } else if (currentMillis < lastDebounceTimeMillis) {
     lastDebounceTimeMillis = currentMillis;
   }
+
+ 
 }
 
-void ToneFun(unsigned long _toneTime, int _toneFreq, int _tonePercent, int &totalTone) {
+void ToneFun(uint32_t _currentMillis, uint32_t _toneTime, int _toneFreq, uint8_t _tonePercent, uint8_t &totalTone) {
   if (totalTone <= 0) {
     return;
   }
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastTimeTone > _toneTime) {
+  // uint32_t currentMillis = millis();
+  if (_currentMillis - lastTimeTone > _toneTime) {
     if (_tonePercent > 0) {
       int p = (int)(_tonePercent * _toneTime / 100);
       tone(BUZZER_PIN, _toneFreq, p);
       totalTone--;
     }
-    lastTimeTone = currentMillis;
-  } else if (currentMillis < lastTimeTone) {
-    lastTimeTone = currentMillis;
+    lastTimeTone = _currentMillis;
+  } else if (_currentMillis < lastTimeTone) {
+    lastTimeTone = _currentMillis;
   }
 }
 
@@ -360,14 +376,6 @@ void HomeDisplay() {
   // 1 Millisecond
   if (stateRun && !stateStop && !stateComplete) {
     line2 = String(countScrew) + "/"+String(SCW_count)+"PCS," + String(millis() - timeStart) + "ms";
-      // String dataRun = "$";
-      // dataRun += "SCW:";
-      // dataRun += String(countScrew);
-      // dataRun+= ",";
-      // dataRun += "RUN:";
-      // dataRun += String(millis() - timeStart);
-      // dataRun+= "#";
-      // Serial.println(dataRun);
   }
 
   if(!stateCensorOnStation){
@@ -497,15 +505,6 @@ void SettingMenu() {
             line2 = String(setSCW_count)+" PCS";
           }
         }
-        //     line1 = "CAL STD: "+String(selectSubMenu2)+"/10";
-        //     line2 = "              ";
-        //     // 
-        //      if (stateRun && !stateStop && !stateComplete) {
-        //       line2 = "TIME: "+ String(millis() - timeStart)+"ms";
-        //     }else{
-        //       line2 = "TIME: "+ String(setCal_std[selectSubMenu2-1])+"ms";
-        //     }            
-        //   }
 
         // --------------------- end Name ------------------ //
       } else if (selectSubMenu1 == 3) {
@@ -697,11 +696,12 @@ void btnCensorOnStOnEventChange(bool state){
       status_test = PASS;
       Serial.println("$JUDGEMENT:PASS#");
       LED_Controls(2);
+      passToneCount = totalTonePASS;
     }else if(countScrew >0){
       LED_Controls(1);
       Serial.println("$JUDGEMENT:NG#");
       status_test = NG;
-      ngToneCount = 0;
+      ngToneCount = totalToneNG;
     }
     countScrew = 0;
     NG_count = 0;
@@ -710,7 +710,7 @@ void btnCensorOnStOnEventChange(bool state){
     // LED_Controls(3);
     
     Serial.println("$RESET:1#");
-    ngToneCount = 5;
+    ngToneCount = 1;
   }
 }
 String currentLine1 = "                ";  //  16 ตัว
