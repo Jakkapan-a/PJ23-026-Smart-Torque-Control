@@ -1,0 +1,65 @@
+#include <SPI.h>
+#include <SD.h>
+#include <UIPEthernet.h>
+// #include <Ethernet.h>
+#include <PubSubClient.h>
+
+byte mac[] = { 0x74, 0x69, 0x69, 0x2D, 0x30, 0x31 };
+IPAddress ip(10, 192, 13, 180);          // IP of Arduino
+IPAddress gateway(10, 192, 13, 254);     // Gateway
+IPAddress subnet(255, 255, 255, 0);      // Subnet mask
+IPAddress primaryDNS(10, 192, 10, 5);    // DNS server
+IPAddress secondaryDNS(10, 192, 10, 6);  // DNS server
+IPAddress server(10, 192, 13, 172);      // IP of MQTT server
+#define ETH_CS 53
+#define MQTT_PORT 1883
+const String MQTT_USER = "automation";
+const String MQTT_PASS = "pssw@automation";
+const String MQTT_TOPIC = "MC";
+const String MQTT_TOPIC_ID = "PJ23-001-1";
+const String MQTT_TOPIC_STATUS = "status";
+const String MQTT_TOPIC_SUB = "receive";
+
+// Callback function header
+void MQTT_Callback(char *topic, byte *payload, unsigned int length);
+
+EthernetClient ethClient;
+// PubSubClient client(ethClient);
+PubSubClient client(server, 1883, MQTT_Callback, ethClient);
+
+// char*, uint8_t*, unsigned int
+void MQTT_Callback(char *topic, byte *payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+
+boolean ConnectMQTT() {
+  // if (!client.connected()) {
+  //   // Connect MQTT server
+  //   if (!ConnectMQTT()) {
+  //     return;
+  //   }
+  // } else {
+  //   client.loop();
+  // }
+  String topicPath = "MC/" + String(MQTT_TOPIC_ID) + "/" + MQTT_TOPIC_STATUS;
+  if (client.connect(MQTT_TOPIC_ID.c_str(), MQTT_USER.c_str(), MQTT_PASS.c_str(), topicPath.c_str(), 0, true, "offline")) {
+    Serial.println("Connected to MQTT server");
+    updateLCD("MQTT connected", "                ");
+    client.publish(topicPath.c_str(), "online");
+    Serial.println("Publish status online");
+    delay(500);
+    return true;
+  } else {
+    // Connecting
+    Serial.println("MQTT disconnect");
+    updateLCD("MQTT disconnect", "                ");
+    return false;
+  }
+}

@@ -4,6 +4,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
 
+
 // -------------------- LCD -------------------- //
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -115,10 +116,9 @@ String _strCalMin = "";
 String _strCalMax = "";
 
 int indexNumber = 0;
-uint8_t lengthNumber = 5;       // 5 Digit
+uint8_t lengthNumber = 5;       // 5 Digit name
 
 uint8_t countScrew = 0;
-
 
 int indexMenu = 0;
 int selectMenu = 0;
@@ -126,6 +126,7 @@ int selectSubMenu = 0;
 int selectSubMenu1 = 0;
 int selectSubMenu2 = 0;
 bool isSave = false;
+
 // Define an array containing letters, numbers, and some symbols
 const char letters[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
                          'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
@@ -147,8 +148,8 @@ int Min = 0;
 int Center = 0;
 int Max = 0;
 
-uint16_t CalStdMin = 0;
-uint16_t CalStdMax= 0;
+uint16_t stdMin = 0;
+uint16_t stdMax= 0;
 
 uint8_t SCW_count = 0;
 uint8_t setSCW_count = 0;
@@ -263,7 +264,7 @@ void loop() {
 
   }
 }
-void LED_Controls(uint8_t state){
+void LED_Controls(uint8_t state = 0){
   if(state == 0){
     ledRed.off();
     ledGreen.off();
@@ -676,7 +677,7 @@ void btnRunOnEventChange(bool state) {
     // ngToneCount = 5;
   }else{
     // int _timeTotal = (int)timeTotal;
-    if(timeTotal < static_cast<uint32_t>(CalStdMin) || timeTotal > static_cast<uint32_t>(CalStdMax) ){
+    if(timeTotal < static_cast<uint32_t>(stdMin) || timeTotal > static_cast<uint32_t>(stdMax) ){
       LED_Controls(1);
       // status_test = NG;
     }else{
@@ -692,7 +693,7 @@ void btnCensorOnStOnEventChange(bool state){
   stateCensorOnStation = !state;
   if(!stateCensorOnStation){
     // 
-    if(countScrew >0 && countScrew == SCW_count && NG_count == 0){
+    if(countScrew > 0 && countScrew == SCW_count && NG_count == 0){
       status_test = PASS;
       Serial.println("$JUDGEMENT:PASS#");
       LED_Controls(2);
@@ -713,6 +714,7 @@ void btnCensorOnStOnEventChange(bool state){
     ngToneCount = 1;
   }
 }
+
 String currentLine1 = "                ";  //  16 ตัว
 String currentLine2 = "                ";  //  16 ตัว
 
