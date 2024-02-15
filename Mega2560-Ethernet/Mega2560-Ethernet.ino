@@ -77,6 +77,9 @@ uint8_t ngToneCount = 0;
 uint8_t totalToneNG = 15;
 uint32_t lastTimeToneNG = 0;
 
+uint16_t countPressUp = 0;
+uint16_t countPressDown = 0;
+const uint16_t pressTime = 150;
 
 // Define an array containing letters, numbers, and some symbols
 const char letters[] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -110,15 +113,15 @@ uint8_t lengthID = 5;  // 5 Digit
 uint8_t IP[] = { 10, 192, 13, 180 };
 uint8_t GATEWAY[] = { 10, 192, 13, 254 };
 uint8_t SUBNET[] = { 255, 255, 255, 0 };
-uint8_t MAC[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+uint8_t MAC[] = { 0x0A, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 uint8_t DNS[] = { 10, 192, 10, 5 };
 
-uint8_t indexIP = 0;
+uint8_t indexIP = 0;  // Index edit IP Address, mac address, gateway, subnet, dns
 
 const int IP_Address = 326;      // 326 - 329 = 4 byte or 4 digit
 const int GatewayAddress = 330;  // 330 - 333 = 4 byte or 4 digit
 const int SubnetAddress = 334;   // 334 - 337 = 4 byte or 4 digit
-const int MacAddress = 338;      // 338 - 343 = 6 byte or 6 digit
+const int MAC_Address = 338;     // 338 - 343 = 6 byte or 6 digit
 const int DnsAddress = 344;      // 344 - 347 = 4 byte or 4 digit
 
 uint8_t MQTT_SERVER[] = { 10, 192, 13, 172 };
@@ -319,6 +322,18 @@ void setup() {
 
   id = getID(ID_Address);
   getIP(IP_Address, IP);
+
+  // Serial.print("MAC Address: ");
+  // for(int i = 0; i < 6; i++) {
+  //   // MAC[i] = readInt8InEEPROM(MAC_Address + i);
+  //   if(MAC[i] < 16) {
+  //     Serial.print("0");
+  //   }
+  //   Serial.print(MAC[i], HEX);
+  //   if (i < 5) {
+  //     Serial.print(":");
+  //   }
+  // }
 }
 
 void loop() {
@@ -395,6 +410,28 @@ void mainFunction() {
     if (indexMenu == 1) {
       // SettingMenu();
     }
+
+    if (currentStateUp) {
+      if (countPressUp > pressTime) {
+        btnUpOnEventPressed();
+      } else {
+        countPressUp += 1;
+      }
+    } else {
+      countPressUp = 0;
+    }
+
+    if (currentStateDown) {
+      if (countPressDown > pressTime) {
+        btnDownOnEventPressed();
+      } else {
+        countPressDown += 1;
+      }
+    } else {
+      countPressDown = 0;
+    }
+
+
     lastDebounceTime = currentMillis;
   } else if (currentMillis < lastDebounceTime) {  // Overflows
     lastDebounceTime = currentMillis;
@@ -710,12 +747,12 @@ void getIP(int address, uint8_t (&ip)[4]) {
 }
 
 
-uint8_t *getMac(int address) {
-  uint8_t mac[6];
+void getMac(int address, uint8_t (&mac)[6]) {
+  // uint8_t mac[6];
   for (int i = 0; i < 6; i++) {
     mac[i] = readInt8InEEPROM(address + i);
   }
-  return mac;
+  // return mac;
 }
 
 
@@ -827,7 +864,7 @@ void stateButtonPressed() {
                   if (stateEsc && !stateUp && !stateDown && !stateEnter) {
                     btnEscOnEventPressed();
                   }
-                  #if 1
+#if 1
   Serial.print("indexMenu: ");
   Serial.println(indexMenu);
   Serial.print("selectMenu: ");
@@ -847,7 +884,7 @@ void stateButtonPressed() {
   Serial.print("indexNumber: ");
   Serial.println(indexNumber);
   Serial.println(" --------------------- ");
-  #endif
+#endif
 }
 
 void btnEscOnEventPressed() {
@@ -914,6 +951,14 @@ void btnUpOnEventPressed() {
           IP[indexIP]++;
         }
       }
+      // SET MAC
+      else if (selectMenu == 2 && selectSubMenu == 3 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        if (MAC[indexIP] == 255) {
+          MAC[indexIP] = 0;
+        } else {
+          MAC[indexIP]++;
+        }
+      }
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1--;
     if (selectSubMenu1 < 1) {
@@ -978,6 +1023,15 @@ void btnDownOnEventPressed() {
       }
     }
 
+    // SET MAC 
+    else if (selectMenu == 2 && selectSubMenu == 3 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      if (MAC[indexIP] == 0) {
+        MAC[indexIP] = 255;
+      } else {
+        MAC[indexIP]--;
+      }
+    }
+
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1++;
   } else if (selectSubMenu > 0) {
@@ -1037,11 +1091,36 @@ void btnEnterOnEventPressed() {
       resetIndex(letters, indexChar, indexID, setId);
       Serial.print("Load ID from EEPROM: ");
       Serial.println(setId);
+    } else if (selectSubMenu == 2) {
+      // Load IP from EEPROM
+      getIP(IP_Address, IP);
+      indexIP = 0;
+      // resetIndex(letters, indexChar, indexIP, ConvertNumberToString(IP[indexIP]));
+      Serial.print("Load IP from EEPROM: ");
+      Serial.println(IP[0]);
+      Serial.println(IP[1]);
+      Serial.println(IP[2]);
+      Serial.println(IP[3]);
+    } else if (selectSubMenu == 3) {
+      // Load MAC from EEPROM
+      getMac(MAC_Address, MAC);
+      indexIP = 0;
+// resetIndex(letters, indexChar, indexMAC, ConvertNumberToString(mac[indexMAC]));
+#if 1
+      Serial.print("Load MAC from EEPROM: ");
+      Serial.println(String(MAC[0], HEX));
+      Serial.println(String(MAC[1], HEX));
+      Serial.println(String(MAC[2], HEX));
+      Serial.println(String(MAC[3], HEX));
+      Serial.println(String(MAC[4], HEX));
+      Serial.println(String(MAC[5], HEX));
+#endif
     }
   } else if (selectMenu == 2 && selectSubMenu > 0 && selectSubMenu1 > 0) {
     // SAVE
     EnterSetID();
     EnterSetIP();
+    EnterSetMac();
   }
 }
 
@@ -1221,6 +1300,33 @@ void EnterSetIP() {
       lcd.noCursor();
     }
   }
+}
+
+void EnterSetMac(){
+  if (selectSubMenu != 3) return;
+  if (selectSubMenu1 != 1) return;
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    getMac(MAC_Address, MAC);
+    indexIP = 0;
+  } else if (selectSubMenu2 > 0) {
+    indexIP++;
+    if (indexIP >= 6) {
+      indexIP = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      for (int i = 0; i < 6; i++) {
+        updateEEPROM(MAC_Address + i, MAC[i]);
+      }
+      delay(1000);
+      selectSubMenu1 = 0;
+      selectSubMenu2 = 0;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+  }
+
 }
 
 void UpdateCountControlsSCW() {
@@ -1569,9 +1675,9 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
     // -- IP --//
     else if (selectSubMenu == 2) {
       if (selectSubMenu2 > 0) {
-        uint8_t curcorIP = 0;
-        indexIpCal(IP, indexIP, curcorIP);
-        lcd.setCursor(curcorIP, 1);
+        uint8_t cursorIP = 0;
+        indexIpCal(IP, indexIP, cursorIP);
+        lcd.setCursor(cursorIP, 1);
         lcd.cursor();
         lcd.blink();
         String ipString = String(IP[0]) + "." + String(IP[1]) + "." + String(IP[2]) + "." + String(IP[3]);
@@ -1580,6 +1686,35 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
         line1 = "SET IP: ";
         line2 = ipString;
       } else {
+        selectSubMenu1 = 0;  // reset
+      }
+    }
+    // -- MAC -- //
+    else if (selectSubMenu == 3) {
+      if (selectSubMenu2 > 0) {
+
+        line1 = "SET MAC Address";
+        if (indexIP <= 3) {
+          uint8_t cursorMac = 0;
+          String strMac = "";
+          indexMacCal(MAC, indexIP, cursorMac, strMac);
+          lcd.setCursor(cursorMac+3, 1);
+          lcd.cursor();
+          lcd.blink();
+          // 1 = 0A:1B:2C:3D
+          line2 = "1 =" + strMac;
+        } else {
+          uint8_t cursorMac = 0;
+          String strMac = "";
+          indexMacCal(MAC, indexIP, cursorMac, strMac);
+
+          lcd.setCursor(cursorMac+3, 1);
+          lcd.cursor();
+          lcd.blink();
+          // 2 = 4E:5F
+          line2 = "2 =" + strMac;
+        }
+      }else{
         selectSubMenu1 = 0;  // reset
       }
     }
@@ -1626,7 +1761,7 @@ void indexIpCal(uint8_t ip[], uint8_t index_input, uint8_t &index_output) {
     //
     uint8_t base = sumDigits + index_input;
     index_output = base - 1;
-#if DEBUG
+#if 0
     Serial.print("IP: ");
     Serial.print(ip[index_input]);
     Serial.print(" digit: ");
@@ -1651,4 +1786,38 @@ uint8_t getDigit(uint8_t value) {
     return 3;
   }
   return 0;
+}
+
+void indexMacCal(uint8_t mac[], uint8_t index_input, uint8_t &index_output, String &str_output) {
+  // index_input <= 3 : xx:xx:xx:xx
+  // index_input >3 && index_input< 6: xx:xx
+  str_output = "";
+  for (int i = index_input <= 3? 0:4; i < 6; i++) {
+    str_output += mac[i] < 16 ? "0" : "";
+    str_output += String(mac[i], HEX);
+    if (i < 5) {
+      str_output += ":";
+    }
+  }
+  // cal index_output
+  switch (index_input) {
+    case 0:
+      index_output = 1;
+      break;
+    case 1:
+      index_output = 4;
+      break;
+    case 2:
+      index_output = 7;
+      break;
+    case 3:
+      index_output = 10;
+      break;
+    case 4:
+      index_output = 1;
+      break;
+    case 5:
+      index_output = 4;
+      break;
+  }
 }
