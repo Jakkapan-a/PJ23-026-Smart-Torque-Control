@@ -55,6 +55,19 @@ TcPINOUT ledGreen(LED_GREEN, false);
 #define LED_RED 9
 TcPINOUT ledRed(LED_RED, false);
 
+#define RELAY_GREEN 26
+TcPINOUT relayGreen(RELAY_GREEN, false);
+
+#define RELAY_ORANGE 27
+TcPINOUT relayOrange(RELAY_ORANGE, false);
+
+#define RELAY_RED 28
+TcPINOUT relayRed(RELAY_RED, false);
+
+#define RELAY_ARAM 29
+TcPINOUT relayAram(RELAY_ARAM, false);
+
+
 #define TORQUE 10
 TcPINOUT torque(TORQUE, false);
 
@@ -305,7 +318,6 @@ void setup() {
     }
     delay(100);
   }
-
   updateLCD("SD Card", "Completed");
 
   tickerUnlockJig.off();
@@ -334,18 +346,15 @@ void setup() {
 
   id = getID(ID_Address);
   getIP(IP_Address, IP);
+  getIP(GATEWAY_Address, GATEWAY);
+  getIP(SUBNET_Address, SUBNET);
+  getMac(MAC_Address, MAC);
+  getIP(DNS_Address, DNS);
+  getIP(IP_SERVER_Address, IP_SERVER);
+  SERVER_PORT_MQTT = readInt16CInEEPROM(SERVER_PORT_MQTT_Address);
 
-  // Serial.print("MAC Address: ");
-  // for(int i = 0; i < 6; i++) {
-  //   // MAC[i] = readInt8InEEPROM(MAC_Address + i);
-  //   if(MAC[i] < 16) {
-  //     Serial.print("0");
-  //   }
-  //   Serial.print(MAC[i], HEX);
-  //   if (i < 5) {
-  //     Serial.print(":");
-  //   }
-  // }
+  isAllowMES = false;
+  LED_Controls(0);
 }
 
 void loop() {
@@ -470,7 +479,6 @@ void mainFunction() {
       }
       // Update LCD
       updateLCD(line1.c_str(), line2.c_str());
-
     } else {
       torque.off();
       settingMenu();
@@ -524,6 +532,7 @@ void manageSerial() {
 void manageSerial1() {
   if (startReceived1 && endReceived1) {
     Serial.println(inputString1);
+    Serial3.println("$RFID: " + inputString1+ "#");
     Serial.println("--------1----------");
     startReceived1 = false;
     endReceived1 = false;
@@ -605,14 +614,28 @@ void LED_Controls(uint8_t state = 0) {
     ledRed.off();
     ledGreen.off();
     ledBlue.off();
+
+    relayGreen.off();
+    relayOrange.on();
+    relayRed.off();
+    relayAram.off();
   } else if (state == 1) {
     ledRed.on();
     ledGreen.off();
     ledBlue.off();
+
+    relayGreen.off();
+    relayOrange.off();
+    relayRed.on();
+    relayAram.on();
   } else if (state == 2) {
     ledRed.off();
     ledGreen.on();
     ledBlue.off();
+
+    relayGreen.on();
+    relayOrange.off();
+    relayRed.off();
   } else if (state == 3) {
     ledRed.off();
     ledGreen.off();
