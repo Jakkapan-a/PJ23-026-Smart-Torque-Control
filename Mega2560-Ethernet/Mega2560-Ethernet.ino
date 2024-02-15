@@ -954,11 +954,13 @@ void EnterSetName() {
     modelSetName = readEEPROM(addressModel[indexAddressModel], lengthNameModel);
     // modelSetName = model;
     indexModelName = 0;
-    resetIndexChar();
+    // resetIndexChar();
+        resetIndex(letters, indexChar, indexModelName,modelSetName);
   } else if (selectSubMenu2 > 0) {
     if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
       indexModelName++;
-      resetIndexChar();
+      // resetIndexChar();
+          resetIndex(letters, indexChar, indexModelName,modelSetName);
       if (indexModelName >= lengthNameModel) {
         indexModelName = 0;
 
@@ -973,7 +975,8 @@ void EnterSetName() {
         delay(1000);
         // Update LCD
         updateLCD("Save Completed ", "               ");
-        resetIndexChar();
+        // resetIndexChar();
+            resetIndex(letters, indexChar, indexModelName,modelSetName);
         selectSubMenu2 = 0;
       }
     }
@@ -1011,11 +1014,13 @@ void EnterMin() {
     setStdMin = getMin(addressModel[indexAddressModel]);
 
     indexNumber = 0;
-    resetIndexCharNumber(ConvertNumberToString(setStdMin));
+    // resetIndexCharNumber(ConvertNumberToString(setStdMin));
+         resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin)) ;
 
   } else if (selectSubMenu2 > 0) {
     indexNumber++;
-    resetIndexCharNumber(ConvertNumberToString(setStdMin));
+    // resetIndexCharNumber(ConvertNumberToString(setStdMin));
+         resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin)) ;
     if (indexNumber >= lengthNumber) {
       indexNumber = 0;
       updateLCD("Save...........", "               ");
@@ -1039,10 +1044,11 @@ void EnterMax() {
     selectSubMenu2 = 1;
 
     indexNumber = 0;
-    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax)) ;
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax));
   } else if (selectSubMenu2 > 0) {
     indexNumber++;
-    resetIndexCharNumber(ConvertNumberToString(setStdMax));
+    // resetIndexCharNumber(ConvertNumberToString(setStdMax));
+     resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax));
     if (indexNumber >= lengthNumber) {
       indexNumber = 0;
       updateLCD("Save...........", "               ");
@@ -1062,23 +1068,23 @@ void UpdateCountControlsSCW() {
   setCountScrew = getCountControls(addressModel[indexSelectionModel]);
 }
 
-void resetIndexChar() {
-  for (int i = 0; i < numChars; i++) {
-    if (letters[i] == modelSetName[indexModelName]) {
-      indexChar = i;
-      break;
-    }
-  }
-}
+// void resetIndexChar() {
+//   for (int i = 0; i < numChars; i++) {
+//     if (letters[i] == modelSetName[indexModelName]) {
+//       indexChar = i;
+//       break;
+//     }
+//   }
+// }
 
-void resetIndexCharNumber(String _cal) {
-  for (int i = 0; i < numCharsNumber; i++) {
-    if (lettersNumber[i] == _cal[indexNumber]) {
-      indexCharNumber = i;
-      break;
-    }
-  }
-}
+// void resetIndexCharNumber(String _cal) {
+//   for (int i = 0; i < numCharsNumber; i++) {
+//     if (lettersNumber[i] == _cal[indexNumber]) {
+//       indexCharNumber = i;
+//       break;
+//     }
+//   }
+// }
 
 void resetIndex(String lettersC, int &indexC, int index, String data) {
   for (int i = 0; i < numChars; i++) {
@@ -1094,14 +1100,18 @@ void btnUpDownOnEventPressed() {
   Serial.println("UP DOWN");
   if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
     indexModelName = 0;
-    resetIndexChar();
+    // resetIndexChar();
+    resetIndex(letters, indexChar, indexModelName,modelSetName);
+    
   } else if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 3) {
     indexNumber = 0;
-    resetIndexCharNumber(ConvertNumberToString(setStdMin));
+    // resetIndexCharNumber(ConvertNumberToString(setStdMin));
+       resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin)) ;
   }
   if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 4) {
     indexNumber = 0;
-    resetIndexCharNumber(ConvertNumberToString(setStdMax));
+    // resetIndexCharNumber(ConvertNumberToString(setStdMax));
+       resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax)) ;
   }
 }
 
