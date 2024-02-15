@@ -60,6 +60,7 @@ TcPINOUT torque(TORQUE, false);
 
 #define LOCK_JIG_PIN 22
 TcPINOUT lockJig(LOCK_JIG_PIN, false);
+
 // -------------------- BUZZER -------------------- //
 #define BUZZER_PIN 2
 // -------------------- EEPROM -------------------- //
@@ -119,16 +120,16 @@ uint8_t DNS[] = { 10, 192, 10, 5 };
 uint8_t indexIP = 0;  // Index edit IP Address, mac address, gateway, subnet, dns
 
 const int IP_Address = 326;      // 326 - 329 = 4 byte or 4 digit
-const int GatewayAddress = 330;  // 330 - 333 = 4 byte or 4 digit
-const int SubnetAddress = 334;   // 334 - 337 = 4 byte or 4 digit
+const int GATEWAY_Address = 330;  // 330 - 333 = 4 byte or 4 digit
+const int SUBNET_Address = 334;   // 334 - 337 = 4 byte or 4 digit
 const int MAC_Address = 338;     // 338 - 343 = 6 byte or 6 digit
-const int DnsAddress = 344;      // 344 - 347 = 4 byte or 4 digit
+const int DNS_Address = 344;      // 344 - 347 = 4 byte or 4 digit
 
-uint8_t MQTT_SERVER[] = { 10, 192, 13, 172 };
-uint16_t MQTT_PORT = 1883;
+uint8_t IP_SERVER[] = { 10, 192, 13, 172 };
+uint16_t SERVER_PORT_MQTT = 1883;
 
-const int IpMQTT = 348;    // 348 - 351 = 4 byte or 4 digit
-const int PortMQTT = 352;  // 352 - 353 = 2 byte or 2 digit
+const int IP_SERVER_Address = 348;    // 348 - 351 = 4 byte or 4 digit
+const int SERVER_PORT_MQTT_Address = 352;  // 352 - 353 = 2 byte or 2 digit
 
 const String MQTT_USER = "automation";
 const String MQTT_PASS = "pssw@automation";
@@ -309,7 +310,9 @@ void setup() {
 
   btnEsc.OnEventChange(btnEscOnEventChange);
   btnUp.OnEventChange(btnUpOnEventChange);
+  btnUp.DebounceDelay(20);  // 20ms
   btnDown.OnEventChange(btnDownOnEventChange);
+  btnDown.DebounceDelay(20);  // 20ms
   btnEnter.OnEventChange(btnEnterOnEventChange);
   btnScwKey.OnEventChange(btnScwKeyOnEventChange);
   btnCensorOnSt.OnEventChange(btnCensorOnStOnEventChange);
@@ -959,6 +962,50 @@ void btnUpOnEventPressed() {
           MAC[indexIP]++;
         }
       }
+      // SET GATEWAY
+      else if (selectMenu == 2 && selectSubMenu == 4 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        if (GATEWAY[indexIP] == 255) {
+          GATEWAY[indexIP] = 0;
+        } else {
+          GATEWAY[indexIP]++;
+        }
+      }
+      // SET SUBNET
+      else if (selectMenu == 2 && selectSubMenu == 5 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        if (SUBNET[indexIP] == 255) {
+          SUBNET[indexIP] = 0;
+        } else {
+          SUBNET[indexIP]++;
+        }
+      }
+      // SET DNS
+      else if (selectMenu == 2 && selectSubMenu == 6 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        if (DNS[indexIP] == 255) {
+          DNS[indexIP] = 0;
+        } else {
+          DNS[indexIP]++;
+        }
+      }
+      // SET IP SERVER
+      else if (selectMenu == 2 && selectSubMenu == 7 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        if (IP_SERVER[indexIP] == 255) {
+          IP_SERVER[indexIP] = 0;
+        } else {
+          IP_SERVER[indexIP]++;
+        }
+      }
+
+      // SET PORT
+      else if (selectMenu == 2 && selectSubMenu == 8 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        indexCharNumber++;
+        if (indexCharNumber > numCharsNumber) {
+          indexCharNumber = 0;
+        }
+        if (indexNumber == 0 && indexCharNumber > 5) {
+          indexCharNumber = 0;
+        }
+      }
+      
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1--;
     if (selectSubMenu1 < 1) {
@@ -1022,13 +1069,54 @@ void btnDownOnEventPressed() {
         IP[indexIP]--;
       }
     }
-
     // SET MAC 
     else if (selectMenu == 2 && selectSubMenu == 3 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
       if (MAC[indexIP] == 0) {
         MAC[indexIP] = 255;
       } else {
         MAC[indexIP]--;
+      }
+    }
+    // SET GATEWAY
+    else if (selectMenu == 2 && selectSubMenu == 4 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      if (GATEWAY[indexIP] == 0) {
+        GATEWAY[indexIP] = 255;
+      } else {
+        GATEWAY[indexIP]--;
+      }
+    }
+    // SET SUBNET
+    else if (selectMenu == 2 && selectSubMenu == 5 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      if (SUBNET[indexIP] == 0) {
+        SUBNET[indexIP] = 255;
+      } else {
+        SUBNET[indexIP]--;
+      }
+    }
+    // SET DNS
+    else if (selectMenu == 2 && selectSubMenu == 6 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      if (DNS[indexIP] == 0) {
+        DNS[indexIP] = 255;
+      } else {
+        DNS[indexIP]--;
+      }
+    }
+    // SET IP SERVER
+    else if (selectMenu == 2 && selectSubMenu == 7 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      if (IP_SERVER[indexIP] == 0) {
+        IP_SERVER[indexIP] = 255;
+      } else {
+        IP_SERVER[indexIP]--;
+      }
+    }
+    // SET PORT
+    else if (selectMenu == 2 && selectSubMenu == 8 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      indexCharNumber--;
+      if (indexCharNumber < 0) {
+        indexCharNumber = numCharsNumber;
+      }
+      if (indexNumber == 0 && indexCharNumber > 5) {
+        indexCharNumber = 5;
       }
     }
 
@@ -1059,7 +1147,6 @@ void btnEnterOnEventPressed() {
     // get min max
     stdMin = getMin(addressModel[index]);
     stdMax = getMax(addressModel[index]);
-
   }
   // Setting model
   else if (selectMenu == 1 && selectSubMenu == 0) {
@@ -1076,7 +1163,6 @@ void btnEnterOnEventPressed() {
     lcd.noBlink();
     lcd.noCursor();
   }
-
   // System
   else if (selectMenu == 2 && selectSubMenu == 0) {
     selectSubMenu = 1;
@@ -1095,7 +1181,6 @@ void btnEnterOnEventPressed() {
       // Load IP from EEPROM
       getIP(IP_Address, IP);
       indexIP = 0;
-      // resetIndex(letters, indexChar, indexIP, ConvertNumberToString(IP[indexIP]));
       Serial.print("Load IP from EEPROM: ");
       Serial.println(IP[0]);
       Serial.println(IP[1]);
@@ -1105,8 +1190,7 @@ void btnEnterOnEventPressed() {
       // Load MAC from EEPROM
       getMac(MAC_Address, MAC);
       indexIP = 0;
-// resetIndex(letters, indexChar, indexMAC, ConvertNumberToString(mac[indexMAC]));
-#if 1
+      #if 1
       Serial.print("Load MAC from EEPROM: ");
       Serial.println(String(MAC[0], HEX));
       Serial.println(String(MAC[1], HEX));
@@ -1114,13 +1198,82 @@ void btnEnterOnEventPressed() {
       Serial.println(String(MAC[3], HEX));
       Serial.println(String(MAC[4], HEX));
       Serial.println(String(MAC[5], HEX));
-#endif
+      #endif
     }
+    // GATEWAY
+    else if (selectSubMenu == 4){
+      // Load MAC from EEPROM
+      getIP(GATEWAY_Address, GATEWAY);
+      indexIP = 0;
+      #if 0
+      Serial.print("Load GATEWAY from EEPROM: ");
+      Serial.println(String(GATEWAY[0], DEC));
+      Serial.println(String(GATEWAY[1], DEC));
+      Serial.println(String(GATEWAY[2], DEC));
+      Serial.println(String(GATEWAY[3], DEC));
+      #endif
+    }
+    // SUBNET
+    else if (selectSubMenu == 5){
+      // Load MAC from EEPROM
+      getIP(SUBNET_Address, SUBNET);
+      indexIP = 0;
+      #if 0
+      Serial.print("Load SUBNET from EEPROM: ");
+      Serial.println(String(SUBNET[0], DEC));
+      Serial.println(String(SUBNET[1], DEC));
+      Serial.println(String(SUBNET[2], DEC));
+      Serial.println(String(SUBNET[3], DEC));
+      #endif
+    }
+    // DNS
+    else if (selectSubMenu == 6){
+      // Load from EEPROM
+      getIP(DNS_Address, DNS);
+      indexIP = 0;
+      #if 0
+      Serial.print("Load DNS from EEPROM: ");
+      Serial.println(String(DNS[0], DEC));
+      Serial.println(String(DNS[1], DEC));
+      Serial.println(String(DNS[2], DEC));
+      Serial.println(String(DNS[3], DEC));
+      #endif
+    }
+    // IP SERVER
+    else if (selectSubMenu == 7){
+      // Load from EEPROM
+      getIP(IP_SERVER_Address, IP_SERVER);
+      indexIP = 0;
+      #if 0
+      Serial.print("Load IP SERVER from EEPROM: ");
+      Serial.println(String(IP_SERVER[0], DEC));
+      Serial.println(String(IP_SERVER[1], DEC));
+      Serial.println(String(IP_SERVER[2], DEC));
+      Serial.println(String(IP_SERVER[3], DEC));
+      #endif
+    }
+    // PORT
+    else if (selectSubMenu == 8){
+      // Load from EEPROM
+      SERVER_PORT_MQTT = readInt16CInEEPROM(SERVER_PORT_MQTT_Address);
+      indexNumber = 0;
+      resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(SERVER_PORT_MQTT));
+      #if 0
+      Serial.print("Load PORT from EEPROM: ");
+      Serial.println(SERVER_PORT_MQTT);
+      #endif
+    }
+
   } else if (selectMenu == 2 && selectSubMenu > 0 && selectSubMenu1 > 0) {
     // SAVE
     EnterSetID();
     EnterSetIP();
     EnterSetMac();
+    EnterSetGateway();
+    EnterSetSubnet();
+    EnterSetDNS();
+    EnterSetIPServer();
+    EnterSetPort();
   }
 }
 
@@ -1191,14 +1344,10 @@ void EnterMin() {
     selectSubMenu2 = 1;
     // Read EEPROM
     setStdMin = getMin(addressModel[indexAddressModel]);
-
     indexNumber = 0;
-    // resetIndexCharNumber(ConvertNumberToString(setStdMin));
     resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin));
-
   } else if (selectSubMenu2 > 0) {
     indexNumber++;
-    // resetIndexCharNumber(ConvertNumberToString(setStdMin));
     resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin));
     if (indexNumber >= lengthNumber) {
       indexNumber = 0;
@@ -1329,6 +1478,137 @@ void EnterSetMac(){
 
 }
 
+void EnterSetGateway(){
+  if (selectSubMenu != 4) return;
+  if (selectSubMenu1 != 1) return;
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    getIP(GATEWAY_Address, GATEWAY);
+    indexIP = 0;
+  } else if (selectSubMenu2 > 0) {
+    indexIP++;
+    if (indexIP >= 4) {
+      indexIP = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      for (int i = 0; i < 4; i++) {
+        updateEEPROM(GATEWAY_Address + i, GATEWAY[i]);
+      }
+      delay(1000);
+      selectSubMenu1 = 0;
+      selectSubMenu2 = 0;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+  }
+
+}
+
+void EnterSetSubnet(){
+  if (selectSubMenu != 5) return;
+  if (selectSubMenu1 != 1) return;
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    getIP(SUBNET_Address, SUBNET);
+    indexIP = 0;
+  } else if (selectSubMenu2 > 0) {
+    indexIP++;
+    if (indexIP >= 4) {
+      indexIP = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      for (int i = 0; i < 4; i++) {
+        updateEEPROM(SUBNET_Address + i, SUBNET[i]);
+      }
+      delay(1000);
+      selectSubMenu1 = 0;
+      selectSubMenu2 = 0;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+  }
+}
+
+void EnterSetDNS(){
+  if (selectSubMenu != 6) return;
+  if (selectSubMenu1 != 1) return;
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    getIP(DNS_Address, DNS);
+    indexIP = 0;
+  } else if (selectSubMenu2 > 0) {
+    indexIP++;
+    if (indexIP >= 4) {
+      indexIP = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      for (int i = 0; i < 4; i++) {
+        updateEEPROM(DNS_Address + i, DNS[i]);
+      }
+      delay(1000);
+      selectSubMenu1 = 0;
+      selectSubMenu2 = 0;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+  }
+}
+
+void EnterSetIPServer(){
+  if (selectSubMenu != 7) return;
+  if (selectSubMenu1 != 1) return;
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    getIP(IP_SERVER_Address, IP_SERVER);
+    indexIP = 0;
+  } else if (selectSubMenu2 > 0) {
+    indexIP++;
+    if (indexIP >= 4) {
+      indexIP = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      for (int i = 0; i < 4; i++) {
+        updateEEPROM(IP_SERVER_Address + i, IP_SERVER[i]);
+      }
+      delay(1000);
+      selectSubMenu1 = 0;
+      selectSubMenu2 = 0;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+  }
+}
+
+void EnterSetPort(){
+  if (selectSubMenu != 8) return;
+  if (selectSubMenu1 != 1) return;
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    SERVER_PORT_MQTT = readInt16CInEEPROM(SERVER_PORT_MQTT_Address);
+    indexNumber = 0;
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(SERVER_PORT_MQTT));
+  } else if (selectSubMenu2 > 0) {
+    indexNumber++;
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(SERVER_PORT_MQTT));
+    if (indexNumber >= lengthNumber) {
+      indexNumber = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      updateInt16ToEEPROM(SERVER_PORT_MQTT_Address, SERVER_PORT_MQTT);
+      delay(1000);
+      selectSubMenu2 = 0;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+  }
+
+}
+
 void UpdateCountControlsSCW() {
   setCountScrew = getCountControls(addressModel[indexSelectionModel]);
 }
@@ -1363,7 +1643,14 @@ void btnUpDownOnEventPressed() {
   // SET IP
   else if (selectSubMenu2 > 0 && selectMenu == 2 && selectSubMenu == 2 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
     indexIP = 0;
-    // resetIndex(letters, indexChar, indexIP, ConvertNumberToString(ip[indexIP]));
+  }
+  // SET MAC
+  else if (selectSubMenu2 > 0 && selectMenu == 2 && selectSubMenu == 3 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+    indexIP = 0;
+  }
+  // SET GATEWAY
+  else if (selectSubMenu2 > 0 && selectMenu == 2 && selectSubMenu == 4 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+    indexIP = 0;
   }
 }
 
@@ -1715,6 +2002,87 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
           line2 = "2 =" + strMac;
         }
       }else{
+        selectSubMenu1 = 0;  // reset
+      }
+    }
+    // -- Gateway -- //
+    else if (selectSubMenu == 4) {
+      if (selectSubMenu2 > 0) {
+        uint8_t cursorGW = 0;
+        indexIpCal(GATEWAY, indexIP, cursorGW);
+        lcd.setCursor(cursorGW, 1);
+        lcd.blink();
+
+        String setGateway = String(GATEWAY[0]) + "." + String(GATEWAY[1]) + "." + String(GATEWAY[2]) + "." + String(GATEWAY[3]);
+        line1 = "SET GATEWAY: ";
+        line2 = setGateway;
+      } else {
+        selectSubMenu1 = 0;  // reset
+      }
+    }
+    // -- Subnet -- //
+    else if (selectSubMenu == 5) {
+      if (selectSubMenu2 > 0) {
+        uint8_t cursorSubnet = 0;
+        indexIpCal(SUBNET, indexIP, cursorSubnet);
+        lcd.setCursor(cursorSubnet, 1);
+        lcd.blink();
+
+        String setSubnet = String(SUBNET[0]) + "." + String(SUBNET[1]) + "." + String(SUBNET[2]) + "." + String(SUBNET[3]);
+        line1 = "SET SUBNET: ";
+        line2 = setSubnet;
+      } else {
+        selectSubMenu1 = 0;  // reset
+      }
+    }
+    // -- DNS -- //
+    else if (selectSubMenu == 6) {
+      if (selectSubMenu2 > 0) {
+        uint8_t cursorDNS = 0;
+        indexIpCal(DNS, indexIP, cursorDNS);
+        lcd.setCursor(cursorDNS, 1);
+        lcd.blink();
+
+        String setDNS = String(DNS[0]) + "." + String(DNS[1]) + "." + String(DNS[2]) + "." + String(DNS[3]);
+        line1 = "SET DNS: ";
+        line2 = setDNS;
+      } else {
+        selectSubMenu1 = 0;  // reset
+      }
+    }
+    // -- IP Server -- //
+    else if (selectSubMenu == 7) {
+      if (selectSubMenu2 > 0) {
+        uint8_t cursorIPServer = 0;
+        indexIpCal(IP_SERVER, indexIP, cursorIPServer);
+        lcd.setCursor(cursorIPServer, 1);
+        lcd.blink();
+
+        String setIPServer = String(IP_SERVER[0]) + "." + String(IP_SERVER[1]) + "." + String(IP_SERVER[2]) + "." + String(IP_SERVER[3]);
+        line1 = "SET IP SERVER: ";
+        line2 = setIPServer;
+      } else {
+        selectSubMenu1 = 0;  // reset
+      }
+    }
+
+    // -- Port Server -- //
+    else if (selectSubMenu == 8) {
+      if (selectSubMenu2 > 0) {
+        lcd.setCursor(indexNumber, 1);
+        lcd.cursor();
+        lcd.blink();
+        char buf[lengthNumber + 1];
+        for (int i = 0; i < lengthNumber + 1; i++) {
+          buf[i] = ' ';
+        }
+        String _strPortServer = ConvertNumberToString(SERVER_PORT_MQTT);
+        _strPortServer.toCharArray(buf, lengthNumber + 1);
+        buf[indexNumber] = lettersNumber[indexCharNumber];
+        SERVER_PORT_MQTT = ConvertStringToNumber(String(buf));
+        line1 = "SET PORT SERVER: ";
+        line2 = ConvertNumberToString(SERVER_PORT_MQTT);
+      } else {
         selectSubMenu1 = 0;  // reset
       }
     }
