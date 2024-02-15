@@ -390,6 +390,7 @@ String getModelName(int index) {
   }
   return readEEPROM(addressModel[index], lengthNameModel);
 }
+
 void SettingMenu() {
 
   String line1 = "               ";
@@ -911,8 +912,6 @@ void btnUpDownOnEventPressed() {
     indexNumber = 0;
     resetIndexCharNumber(ConvertNumberToString(setCalMax));
   }
-
-
 }
 void btnEnterOnEventChange(bool state) {
   currentStateEnter = !state;
@@ -1112,18 +1111,6 @@ void resetIndexChar() {
     }
   }
 }
-
-
-// void resetIndexCharNumber() {
-//   String _calMin = ConvertNumberToString(setCalMin);
-//   for (int i = 0; i < numCharsNumber; i++) {
-//     if (lettersNumber[i] == _calMin[indexNumber]) {
-//       indexCharNumber = i;
-//       break;
-//     }
-//   }
-// }
-
 
 void resetIndexCharNumber(String _cal) {
   //String _calMax = ConvertNumberToString(setCalMax);
