@@ -6,7 +6,7 @@
 #include <SPI.h>
 #include <SD.h>
 
-
+#define DEBUG 1
 // ------------------- Head Function -------------- //
 void LED_Controls(uint8_t);
 
@@ -66,7 +66,6 @@ TcPINOUT lockJig(LOCK_JIG_PIN, false);
 int addressModel[10] = { 1, 33, 65, 97, 129, 161, 193, 225, 257, 289 };
 int indexAddressModel = 0;
 
-const int ID_Address = 300;  // 300 - 304 = 5 byte or 5 digit
 
 
 // -------------------- TONE -------------------- //
@@ -100,9 +99,36 @@ String modelSetName = "";
 int indexModelName = 0;       // Index edit model name
 uint8_t lengthNameModel = 5;  // 5 Digit
 
+
+const int ID_Address = 321;  // 321 - 325 = 5 byte or 5 digit
 String id = "";
+String setId = "";
 int indexID = 0;       // Index edit ID
-uint8_t lengthID = 5;  // 5 Digit 
+uint8_t lengthID = 5;  // 5 Digit
+
+
+uint8_t IP[] = { 10, 192, 13, 180 };
+uint8_t GATEWAY[] = { 10, 192, 13, 254 };
+uint8_t SUBNET[] = { 255, 255, 255, 0 };
+uint8_t MAC[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+uint8_t DNS[] = { 10, 192, 10, 5 };
+
+uint8_t indexIP = 0;
+
+const int IP_Address = 326;      // 326 - 329 = 4 byte or 4 digit
+const int GatewayAddress = 330;  // 330 - 333 = 4 byte or 4 digit
+const int SubnetAddress = 334;   // 334 - 337 = 4 byte or 4 digit
+const int MacAddress = 338;      // 338 - 343 = 6 byte or 6 digit
+const int DnsAddress = 344;      // 344 - 347 = 4 byte or 4 digit
+
+uint8_t MQTT_SERVER[] = { 10, 192, 13, 172 };
+uint16_t MQTT_PORT = 1883;
+
+const int IpMQTT = 348;    // 348 - 351 = 4 byte or 4 digit
+const int PortMQTT = 352;  // 352 - 353 = 2 byte or 2 digit
+
+const String MQTT_USER = "automation";
+const String MQTT_PASS = "pssw@automation";
 
 int indexNumber = 0;
 uint8_t lengthNumber = 5;  // 5 Digit name
@@ -110,7 +136,6 @@ uint8_t lengthNumber = 5;  // 5 Digit name
 uint8_t countScrew = 0;
 uint8_t countScrewMax = 2;
 uint8_t setCountScrew = 0;
-
 
 uint32_t timeComplete, timeStart = 0;
 uint32_t stdMin = 700;
@@ -291,6 +316,9 @@ void setup() {
   // indexModel
   countScrewMax = getCountControls(addressModel[indexSelectionModel]);
   model = getModelName(indexSelectionModel);
+
+  id = getID(ID_Address);
+  getIP(IP_Address, IP);
 }
 
 void loop() {
@@ -596,9 +624,12 @@ void resetStateButton() {
   stateDown = false;
   stateEnter = false;
 }
+
+// -------------------- EEPROM -------------------- //
 void updateEEPROM(int index, uint8_t data) {
   EEPROM.update(index, data);
 }
+
 void updateInt16ToEEPROM(int address, uint16_t data) {
   EEPROM.update(address, data >> 8);        // Store the higher byte
   EEPROM.update(address + 1, data & 0xFF);  // Store the lower byte
@@ -649,6 +680,7 @@ uint16_t getMax(int address) {
   int add = getAddress(address, 1);
   return readInt16CInEEPROM(add);
 }
+
 String getID(int address) {
   return readEEPROM(address, 5);
 }
@@ -661,11 +693,34 @@ String getModelName(int index) {
 }
 
 void writeID(int address, String data) {
-  int add = getAddress(address, 2);
-  updateEEPROM(add, data);
+  updateEEPROM(address, data);
+}
+
+// uint8_t* getIP(int address) {
+//   uint8_t ip[4];
+//   for (int i = 0; i < 4; i++) {
+//     ip[i] = readInt8InEEPROM(address + i);
+//   }
+//   return ip;
+// }
+void getIP(int address, uint8_t (&ip)[4]) {
+  for (int i = 0; i < 4; i++) {
+    ip[i] = readInt8InEEPROM(address + i);
+  }
 }
 
 
+uint8_t *getMac(int address) {
+  uint8_t mac[6];
+  for (int i = 0; i < 6; i++) {
+    mac[i] = readInt8InEEPROM(address + i);
+  }
+  return mac;
+}
+
+
+
+// -------------------- BUTTON EVENT -------------------- //
 void btnEscOnEventChange(bool state) {
   currentStateEsc = !state;
   if (!state) {
@@ -728,7 +783,6 @@ void btnEnterOnEventChange(bool state) {
   }
 }
 
-
 void stateButtonPressed() {
   // 0 0 0 0
   if (!stateEsc && !stateUp && !stateDown && !stateEnter) {
@@ -773,6 +827,7 @@ void stateButtonPressed() {
                   if (stateEsc && !stateUp && !stateDown && !stateEnter) {
                     btnEscOnEventPressed();
                   }
+                  #if 1
   Serial.print("indexMenu: ");
   Serial.println(indexMenu);
   Serial.print("selectMenu: ");
@@ -792,6 +847,7 @@ void stateButtonPressed() {
   Serial.print("indexNumber: ");
   Serial.println(indexNumber);
   Serial.println(" --------------------- ");
+  #endif
 }
 
 void btnEscOnEventPressed() {
@@ -835,14 +891,29 @@ void btnUpOnEventPressed() {
         if (setCountScrew > 50) {
           setCountScrew = 1;
         }
-      } else
-        // Model Name
-        if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
-          indexChar++;
-          if (indexChar > numChars) {
-            indexChar = 0;
-          }
+      }
+      // Model Name
+      else if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        indexChar++;
+        if (indexChar > numChars) {
+          indexChar = 0;
         }
+      }
+      // SET ID
+      else if (selectMenu == 2 && selectSubMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        indexChar++;
+        if (indexChar > numChars) {
+          indexChar = 0;
+        }
+      }
+      // SET IP
+      else if (selectMenu == 2 && selectSubMenu == 2 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+        if (IP[indexIP] == 255) {
+          IP[indexIP] = 0;
+        } else {
+          IP[indexIP]++;
+        }
+      }
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1--;
     if (selectSubMenu1 < 1) {
@@ -854,6 +925,10 @@ void btnUpOnEventPressed() {
       if (selectSubMenu < 1) {
         selectSubMenu = 10;
       }
+    }
+
+    if (selectMenu == 2 && selectSubMenu < 1) {
+      selectSubMenu = 8;
     }
   } else if (indexMenu > 0) {
     selectMenu--;
@@ -887,6 +962,22 @@ void btnDownOnEventPressed() {
         indexChar = numChars;
       }
     }
+    // SET ID
+    else if (selectMenu == 2 && selectSubMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      indexChar--;
+      if (indexChar < 0) {
+        indexChar = numChars;
+      }
+    }
+    // SET IP
+    else if (selectMenu == 2 && selectSubMenu == 2 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+      if (IP[indexIP] == 0) {
+        IP[indexIP] = 255;
+      } else {
+        IP[indexIP]--;
+      }
+    }
+
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1++;
   } else if (selectSubMenu > 0) {
@@ -915,12 +1006,11 @@ void btnEnterOnEventPressed() {
     stdMin = getMin(addressModel[index]);
     stdMax = getMax(addressModel[index]);
 
-  } 
+  }
   // Setting model
   else if (selectMenu == 1 && selectSubMenu == 0) {
     selectSubMenu = 1;
-  } else
-    if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 == 0) {
+  } else if (selectMenu == 1 && selectSubMenu > 0 && selectSubMenu1 == 0) {
     selectSubMenu1 = 1;
     setStdMin = getMin(addressModel[indexAddressModel]);
     setStdMax = getMax(addressModel[indexAddressModel]);
@@ -934,15 +1024,25 @@ void btnEnterOnEventPressed() {
   }
 
   // System
-  else if(selectMenu == 2 && selectSubMenu == 0){
+  else if (selectMenu == 2 && selectSubMenu == 0) {
     selectSubMenu = 1;
-  }else if(selectMenu == 2 && selectSubMenu > 0 && selectSubMenu1 == 0)
-  {
-   selectSubMenu1 =1;
-   id = getID(ID_Address);
-   indexID = 0;
+  } else if (selectMenu == 2 && selectSubMenu > 0 && selectSubMenu1 == 0) {
+    selectSubMenu1 = 1;
+    selectSubMenu2 = 1;
+
+    if (selectSubMenu == 1) {
+      // Load ID from EEPROM
+      setId = getID(ID_Address);
+      indexID = 0;
+      resetIndex(letters, indexChar, indexID, setId);
+      Serial.print("Load ID from EEPROM: ");
+      Serial.println(setId);
+    }
+  } else if (selectMenu == 2 && selectSubMenu > 0 && selectSubMenu1 > 0) {
+    // SAVE
+    EnterSetID();
+    EnterSetIP();
   }
-  
 }
 
 
@@ -955,12 +1055,12 @@ void EnterSetName() {
     // modelSetName = model;
     indexModelName = 0;
     // resetIndexChar();
-        resetIndex(letters, indexChar, indexModelName,modelSetName);
+    resetIndex(letters, indexChar, indexModelName, modelSetName);
   } else if (selectSubMenu2 > 0) {
     if (selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
       indexModelName++;
       // resetIndexChar();
-          resetIndex(letters, indexChar, indexModelName,modelSetName);
+      resetIndex(letters, indexChar, indexModelName, modelSetName);
       if (indexModelName >= lengthNameModel) {
         indexModelName = 0;
 
@@ -976,7 +1076,7 @@ void EnterSetName() {
         // Update LCD
         updateLCD("Save Completed ", "               ");
         // resetIndexChar();
-            resetIndex(letters, indexChar, indexModelName,modelSetName);
+        resetIndex(letters, indexChar, indexModelName, modelSetName);
         selectSubMenu2 = 0;
       }
     }
@@ -1015,12 +1115,12 @@ void EnterMin() {
 
     indexNumber = 0;
     // resetIndexCharNumber(ConvertNumberToString(setStdMin));
-         resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin)) ;
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin));
 
   } else if (selectSubMenu2 > 0) {
     indexNumber++;
     // resetIndexCharNumber(ConvertNumberToString(setStdMin));
-         resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin)) ;
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin));
     if (indexNumber >= lengthNumber) {
       indexNumber = 0;
       updateLCD("Save...........", "               ");
@@ -1047,8 +1147,7 @@ void EnterMax() {
     resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax));
   } else if (selectSubMenu2 > 0) {
     indexNumber++;
-    // resetIndexCharNumber(ConvertNumberToString(setStdMax));
-     resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax));
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax));
     if (indexNumber >= lengthNumber) {
       indexNumber = 0;
       updateLCD("Save...........", "               ");
@@ -1064,27 +1163,69 @@ void EnterMax() {
   }
 }
 
+void EnterSetID() {
+  if (selectSubMenu != 1) return;
+  if (selectSubMenu1 != 1) return;
+
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    setId = getID(ID_Address);
+    indexID = 0;
+    resetIndex(letters, indexChar, indexID, setId);
+  } else if (selectSubMenu2 > 0) {
+    indexID++;
+    if (indexID >= lengthID) {
+#if DEBUG
+      Serial.println("Save ID to EEPROM");
+      Serial.print("ID: ");
+      Serial.println(setId);
+#endif
+
+      indexID = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      writeID(ID_Address, setId);
+      delay(1000);
+      selectSubMenu1 = 0;
+      selectSubMenu2 = 0;
+      id = setId;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+    resetIndex(letters, indexChar, indexID, setId);
+  }
+}
+
+void EnterSetIP() {
+  if (selectSubMenu != 2) return;
+  if (selectSubMenu1 != 1) return;
+  if (selectSubMenu2 == 0) {
+    selectSubMenu2 = 1;
+    // Read EEPROM
+    getIP(IP_Address, IP);
+    indexIP = 0;
+  } else if (selectSubMenu2 > 0) {
+    indexIP++;
+    if (indexIP >= 4) {
+      indexIP = 0;
+      updateLCD("Save...........", "               ");
+      // Save to EEPROM
+      for (int i = 0; i < 4; i++) {
+        updateEEPROM(IP_Address + i, IP[i]);
+      }
+      delay(1000);
+      selectSubMenu1 = 0;
+      selectSubMenu2 = 0;
+      lcd.noBlink();
+      lcd.noCursor();
+    }
+  }
+}
+
 void UpdateCountControlsSCW() {
   setCountScrew = getCountControls(addressModel[indexSelectionModel]);
 }
-
-// void resetIndexChar() {
-//   for (int i = 0; i < numChars; i++) {
-//     if (letters[i] == modelSetName[indexModelName]) {
-//       indexChar = i;
-//       break;
-//     }
-//   }
-// }
-
-// void resetIndexCharNumber(String _cal) {
-//   for (int i = 0; i < numCharsNumber; i++) {
-//     if (lettersNumber[i] == _cal[indexNumber]) {
-//       indexCharNumber = i;
-//       break;
-//     }
-//   }
-// }
 
 void resetIndex(String lettersC, int &indexC, int index, String data) {
   for (int i = 0; i < numChars; i++) {
@@ -1093,25 +1234,30 @@ void resetIndex(String lettersC, int &indexC, int index, String data) {
       break;
     }
   }
-
 }
 
 void btnUpDownOnEventPressed() {
   Serial.println("UP DOWN");
   if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
     indexModelName = 0;
-    // resetIndexChar();
-    resetIndex(letters, indexChar, indexModelName,modelSetName);
-    
+    resetIndex(letters, indexChar, indexModelName, modelSetName);
+
   } else if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 3) {
     indexNumber = 0;
-    // resetIndexCharNumber(ConvertNumberToString(setStdMin));
-       resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin)) ;
-  }
-  if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 4) {
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMin));
+  } else if (selectSubMenu2 > 0 && selectMenu == 1 && selectSubMenu1 == 4) {
     indexNumber = 0;
-    // resetIndexCharNumber(ConvertNumberToString(setStdMax));
-       resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax)) ;
+    resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(setStdMax));
+  }
+  // SET ID
+  else if (selectSubMenu2 > 0 && selectMenu == 2 && selectSubMenu == 1 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+    indexID = 0;
+    resetIndex(letters, indexChar, indexID, setId);
+  }
+  // SET IP
+  else if (selectSubMenu2 > 0 && selectMenu == 2 && selectSubMenu == 2 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
+    indexIP = 0;
+    // resetIndex(letters, indexChar, indexIP, ConvertNumberToString(ip[indexIP]));
   }
 }
 
@@ -1121,7 +1267,7 @@ void settingMenu() {
   String line2 = "               ";
 
   if (isSave && selectSubMenu > 0) {
-    line1 = "SAVE...........";
+    line1 = "SAVE-----------";
     line2 = "               ";
     updateLCD(line1, line2);
     isSave = false;
@@ -1166,11 +1312,10 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2) {
   } else if (_selectMenu == 2) {
     line1 = ">SYSTEM";
     line2 = " STATUS: " + statusServer;  //  STATUS: online or offline
-  }else if(_selectMenu == 3){
+  } else if (_selectMenu == 3) {
     line1 = " SYSTEM";
     line2 = ">STATUS: " + statusServer;  //  STATUS: online or offline
-  }
-  else if (_selectMenu > 3) {
+  } else if (_selectMenu > 3) {
     _selectMenu = 0;
   } else if (_selectMenu < 0) {
     _selectMenu = 3;
@@ -1401,39 +1546,109 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
   // 6. DNS Server
   // 7. IP Server
   // 8. Port Server
-
   if (selectSubMenu1 > 0) {
-    if(selectSubMenu1 == 1){
-      line1 = " SET ID: ";
-      line2 = " ID: " + getID(ID_Address);
+    //-- ID -- //
+    if (selectSubMenu == 1) {
+      if (selectSubMenu2 > 0) {
+        lcd.setCursor(indexID, 1);
+        lcd.cursor();
+        lcd.blink();
+        char buf[lengthID + 1];
+        for (int i = 0; i < lengthID + 1; i++) {
+          buf[i] = ' ';
+        }
+        setId.toCharArray(buf, lengthID + 1);
+        buf[indexID] = letters[indexChar];
+        setId = String(buf);
+        line1 = "SET ID: ";
+        line2 = setId;
+      } else {
+        selectSubMenu1 = 0;  // reset
+      }
+    }
+    // -- IP --//
+    else if (selectSubMenu == 2) {
+      if (selectSubMenu2 > 0) {
+        uint8_t curcorIP = 0;
+        indexIpCal(IP, indexIP, curcorIP);
+        lcd.setCursor(curcorIP, 1);
+        lcd.cursor();
+        lcd.blink();
+        String ipString = String(IP[0]) + "." + String(IP[1]) + "." + String(IP[2]) + "." + String(IP[3]);
+
+        // ipString = String(buf);
+        line1 = "SET IP: ";
+        line2 = ipString;
+      } else {
+        selectSubMenu1 = 0;  // reset
+      }
     }
   } else if (selectSubMenu == 1) {
-    line1 = ">ID: " + getID(ID_Address);
-    line2 = " IP: ";
+    line1 = ">ID: " + id;
+    line2 = " IP";
   } else if (selectSubMenu == 2) {
-    line1 = " ID: " + getID(ID_Address);
-    line2 = ">IP: ";
+    line1 = " ID: " + id;
+    line2 = ">IP";
   } else if (selectSubMenu == 3) {
-    line1 = " IP: ";
-    line2 = ">MAC: ";
+    line1 = ">MAC ";
+    line2 = " GATEWAY ";
   } else if (selectSubMenu == 4) {
-    line1 = " MAC: ";
-    line2 = ">GATEWAY: ";
+    line1 = " MAC ";
+    line2 = ">GATEWAY ";
   } else if (selectSubMenu == 5) {
-    line1 = " GATEWAY: ";
-    line2 = ">SUBNET: ";
+    line1 = ">SUBNET ";
+    line2 = " DNS ";
   } else if (selectSubMenu == 6) {
-    line1 = " SUBNET: ";
-    line2 = ">DNS SERVER: ";
+    line1 = " SUBNET ";
+    line2 = ">DNS ";
   } else if (selectSubMenu == 7) {
-    line1 = " DNS SERVER: ";
-    line2 = ">IP SERVER: ";
+    line1 = ">IP SERVER";
+    line2 = " PORT SERVER ";
   } else if (selectSubMenu == 8) {
-    line1 = " IP SERVER: ";
-    line2 = ">PORT SERVER: ";
+    line1 = " IP SERVER";
+    line2 = ">PORT SERVER";
   } else if (selectSubMenu > 8) {
     selectSubMenu = 1;
   } else if (selectSubMenu < 1) {
     selectSubMenu = 8;
   }
+}
+
+void indexIpCal(uint8_t ip[], uint8_t index_input, uint8_t &index_output) {
+  //  check index_input
+  // xxx.xxx.xxx.xxx
+  if (index_input < 4) {
+    //
+    uint8_t sumDigits = 0;
+    for (uint8_t i = 0; i <= index_input; ++i) {
+      sumDigits += getDigit(ip[i]);
+    }
+    //
+    uint8_t base = sumDigits + index_input;
+    index_output = base - 1;
+#if DEBUG
+    Serial.print("IP: ");
+    Serial.print(ip[index_input]);
+    Serial.print(" digit: ");
+    Serial.print(getDigit(ip[index_input]));
+    Serial.print(" base: ");
+    Serial.print(base);
+    Serial.print(" index_output: ");
+    Serial.println(index_output);
+#endif
+
+  } else {
+    index_output = 0;
+  }
+}
+
+uint8_t getDigit(uint8_t value) {
+  if (value < 10) {
+    return 1;
+  } else if (value < 100) {
+    return 2;
+  } else {
+    return 3;
+  }
+  return 0;
 }
