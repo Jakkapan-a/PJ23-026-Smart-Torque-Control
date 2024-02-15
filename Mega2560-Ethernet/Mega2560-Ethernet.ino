@@ -61,13 +61,14 @@ TcPINOUT torque(TORQUE, false);
 #define LOCK_JIG_PIN 22
 TcPINOUT lockJig(LOCK_JIG_PIN, false);
 
+#define TICKER_UNLOCK_JIG 42
+TcPINOUT tickerUnlockJig(TICKER_UNLOCK_JIG, true);
+
 // -------------------- BUZZER -------------------- //
 #define BUZZER_PIN 2
 // -------------------- EEPROM -------------------- //
 int addressModel[10] = { 1, 33, 65, 97, 129, 161, 193, 225, 257, 289 };
 int indexAddressModel = 0;
-
-
 
 // -------------------- TONE -------------------- //
 uint8_t passToneCount = 0;
@@ -119,16 +120,16 @@ uint8_t DNS[] = { 10, 192, 10, 5 };
 
 uint8_t indexIP = 0;  // Index edit IP Address, mac address, gateway, subnet, dns
 
-const int IP_Address = 326;      // 326 - 329 = 4 byte or 4 digit
+const int IP_Address = 326;       // 326 - 329 = 4 byte or 4 digit
 const int GATEWAY_Address = 330;  // 330 - 333 = 4 byte or 4 digit
 const int SUBNET_Address = 334;   // 334 - 337 = 4 byte or 4 digit
-const int MAC_Address = 338;     // 338 - 343 = 6 byte or 6 digit
+const int MAC_Address = 338;      // 338 - 343 = 6 byte or 6 digit
 const int DNS_Address = 344;      // 344 - 347 = 4 byte or 4 digit
 
 uint8_t IP_SERVER[] = { 10, 192, 13, 172 };
 uint16_t SERVER_PORT_MQTT = 1883;
 
-const int IP_SERVER_Address = 348;    // 348 - 351 = 4 byte or 4 digit
+const int IP_SERVER_Address = 348;         // 348 - 351 = 4 byte or 4 digit
 const int SERVER_PORT_MQTT_Address = 352;  // 352 - 353 = 2 byte or 2 digit
 
 const String MQTT_USER = "automation";
@@ -150,6 +151,10 @@ uint32_t setStdMax = 2000;
 
 String _strStdMin = "";
 String _strStdMax = "";
+
+uint8_t pressUnlockJig = 0;
+const uint8_t pressUnlockJigMax = 5;
+uint8_t pressUnlockJigCountDown = 0;
 
 uint32_t lastDebounceTime, lastDebounceTimeMillis, lastDebounceTimeSecond = 0;
 boolean stateStart, stateStop = false;
@@ -196,6 +201,7 @@ boolean endReceived = false;
 const char startChar = '$';
 const char endChar = '#';
 String inputString = "";
+
 void serialEvent() {
   while (Serial.available()) {
     byte inChar = (byte)Serial.read();
@@ -302,6 +308,7 @@ void setup() {
 
   updateLCD("SD Card", "Completed");
 
+  tickerUnlockJig.off();
   // Add function of button
   btnStart.OnEventChange(btnStartOnEventChange);
   btnStart.DebounceDelay(20);  // 10ms
@@ -309,11 +316,13 @@ void setup() {
   btnStop.DebounceDelay(20);  // 10ms
 
   btnEsc.OnEventChange(btnEscOnEventChange);
+  btnEsc.DebounceDelay(20);
   btnUp.OnEventChange(btnUpOnEventChange);
   btnUp.DebounceDelay(20);  // 20ms
   btnDown.OnEventChange(btnDownOnEventChange);
   btnDown.DebounceDelay(20);  // 20ms
   btnEnter.OnEventChange(btnEnterOnEventChange);
+  btnEnter.DebounceDelay(20);  // 20ms
   btnScwKey.OnEventChange(btnScwKeyOnEventChange);
   btnCensorOnSt.OnEventChange(btnCensorOnStOnEventChange);
 
@@ -407,12 +416,18 @@ void mainFunction() {
   if (ngToneCount > 0) {
     ngToneCount = totalToneNG;
   }
+
+  if (pressUnlockJigCountDown > 0 && pressUnlockJig == 2) {
+    tickerUnlockJig.on();
+    pressUnlockJigCountDown = 0;
+    pressUnlockJig = 0;
+  }
   unsigned long currentMillis = millis();
   // -------------------- Debounce 10 ms ------------------ //
   if (currentMillis - lastDebounceTime > 10) {
-    if (indexMenu == 1) {
-      // SettingMenu();
-    }
+    // if (indexMenu == 1) {
+    //   // SettingMenu();
+    // }
 
     if (currentStateUp) {
       if (countPressUp > pressTime) {
@@ -460,7 +475,12 @@ void mainFunction() {
       torque.off();
       settingMenu();
     }
-
+    if (pressUnlockJigCountDown > 0) {
+      pressUnlockJigCountDown--;
+      if (pressUnlockJigCountDown <= 0) {
+        pressUnlockJig = 0;
+      }
+    }
     stateButtonPressed();
     resetStateButton();
     lastDebounceTimeMillis = currentMillis;
@@ -655,6 +675,7 @@ void btnScwKeyOnEventChange(bool state) {
     ngToneCount = 0;  // Reset ng tone
     // MES ON
     isAllowMES = true;
+    tickerUnlockJig.off();
   }
 }
 
@@ -829,45 +850,43 @@ void stateButtonPressed() {
     // not pressed
     return;
   } else
-    // 0 0 0 1
-    if (!stateEsc && !stateUp && !stateDown && stateEnter) {
-      btnEnterOnEventPressed();
+    // 1 1 1 0
+    if (stateEsc && stateUp && stateDown && !stateEnter) {
+      if (pressUnlockJig == 0) {
+        pressUnlockJig = 1;
+        pressUnlockJigCountDown = pressUnlockJigMax;
+      }
     } else
-      // 0 0 1 0
-      if (!stateEsc && !stateUp && stateDown && !stateEnter) {
-        btnDownOnEventPressed();
+      // 1 1 0 0
+      if (stateEsc && stateUp && !stateDown && !stateEnter) {
+        if (pressUnlockJig == 1) {
+          pressUnlockJig = 2;
+        }
       } else
-        // 0 0 1 1
-        if (!stateEsc && !stateUp && stateDown && stateEnter) {
-          // btnDownOnEventPressed();
-          // btnEnterOnEventPressed();
+        // 0 0 0 1
+        if (!stateEsc && !stateUp && !stateDown && stateEnter) {
+          btnEnterOnEventPressed();
         } else
-          // 0 1 0 0
-          if (!stateEsc && stateUp && !stateDown && !stateEnter) {
-            btnUpOnEventPressed();
+          // 0 0 1 0
+          if (!stateEsc && !stateUp && stateDown && !stateEnter) {
+            btnDownOnEventPressed();
           } else
-            // 0 1 0 1
-            if (!stateEsc && stateUp && !stateDown && stateEnter) {
-              // btnUpOnEventPressed();
-              // btnEnterOnEventPressed();
-            } else
-              // 0 1 1 0
-              if (!stateEsc && stateUp && stateDown && !stateEnter) {
-                // btnUpOnEventPressed();
-                btnUpDownOnEventPressed();
-                // Serial.println("UP DOWN");
-              } else
-                // 0 1 1 1
-                if (!stateEsc && stateUp && stateDown && stateEnter) {
-                  // btnUpOnEventPressed();
-                  // btnDownOnEventPressed();
-                  // btnEnterOnEventPressed();
-                } else
-                  // 1 0 0 0
-                  if (stateEsc && !stateUp && !stateDown && !stateEnter) {
-                    btnEscOnEventPressed();
-                  }
-#if 1
+              // 0 1 0 0
+              if (!stateEsc && stateUp && !stateDown && !stateEnter) {
+                btnUpOnEventPressed();
+              } else            
+                  // 0 1 1 0
+                  if (!stateEsc && stateUp && stateDown && !stateEnter) {
+                    // btnUpOnEventPressed();
+                    btnUpDownOnEventPressed();
+                    // Serial.println("UP DOWN");
+                  } else
+                      // 1 0 0 0
+                      if (stateEsc && !stateUp && !stateDown && !stateEnter) {
+                        btnEscOnEventPressed();
+                      }
+
+#if 0
   Serial.print("indexMenu: ");
   Serial.println(indexMenu);
   Serial.print("selectMenu: ");
@@ -1005,7 +1024,7 @@ void btnUpOnEventPressed() {
           indexCharNumber = 0;
         }
       }
-      
+
   } else if (selectSubMenu1 > 0) {
     selectSubMenu1--;
     if (selectSubMenu1 < 1) {
@@ -1069,7 +1088,7 @@ void btnDownOnEventPressed() {
         IP[indexIP]--;
       }
     }
-    // SET MAC 
+    // SET MAC
     else if (selectMenu == 2 && selectSubMenu == 3 && selectSubMenu1 == 1 && selectSubMenu2 == 1) {
       if (MAC[indexIP] == 0) {
         MAC[indexIP] = 255;
@@ -1190,7 +1209,7 @@ void btnEnterOnEventPressed() {
       // Load MAC from EEPROM
       getMac(MAC_Address, MAC);
       indexIP = 0;
-      #if 1
+#if 1
       Serial.print("Load MAC from EEPROM: ");
       Serial.println(String(MAC[0], HEX));
       Serial.println(String(MAC[1], HEX));
@@ -1198,70 +1217,70 @@ void btnEnterOnEventPressed() {
       Serial.println(String(MAC[3], HEX));
       Serial.println(String(MAC[4], HEX));
       Serial.println(String(MAC[5], HEX));
-      #endif
+#endif
     }
     // GATEWAY
-    else if (selectSubMenu == 4){
+    else if (selectSubMenu == 4) {
       // Load MAC from EEPROM
       getIP(GATEWAY_Address, GATEWAY);
       indexIP = 0;
-      #if 0
+#if 0
       Serial.print("Load GATEWAY from EEPROM: ");
       Serial.println(String(GATEWAY[0], DEC));
       Serial.println(String(GATEWAY[1], DEC));
       Serial.println(String(GATEWAY[2], DEC));
       Serial.println(String(GATEWAY[3], DEC));
-      #endif
+#endif
     }
     // SUBNET
-    else if (selectSubMenu == 5){
+    else if (selectSubMenu == 5) {
       // Load MAC from EEPROM
       getIP(SUBNET_Address, SUBNET);
       indexIP = 0;
-      #if 0
+#if 0
       Serial.print("Load SUBNET from EEPROM: ");
       Serial.println(String(SUBNET[0], DEC));
       Serial.println(String(SUBNET[1], DEC));
       Serial.println(String(SUBNET[2], DEC));
       Serial.println(String(SUBNET[3], DEC));
-      #endif
+#endif
     }
     // DNS
-    else if (selectSubMenu == 6){
+    else if (selectSubMenu == 6) {
       // Load from EEPROM
       getIP(DNS_Address, DNS);
       indexIP = 0;
-      #if 0
+#if 0
       Serial.print("Load DNS from EEPROM: ");
       Serial.println(String(DNS[0], DEC));
       Serial.println(String(DNS[1], DEC));
       Serial.println(String(DNS[2], DEC));
       Serial.println(String(DNS[3], DEC));
-      #endif
+#endif
     }
     // IP SERVER
-    else if (selectSubMenu == 7){
+    else if (selectSubMenu == 7) {
       // Load from EEPROM
       getIP(IP_SERVER_Address, IP_SERVER);
       indexIP = 0;
-      #if 0
+#if 0
       Serial.print("Load IP SERVER from EEPROM: ");
       Serial.println(String(IP_SERVER[0], DEC));
       Serial.println(String(IP_SERVER[1], DEC));
       Serial.println(String(IP_SERVER[2], DEC));
       Serial.println(String(IP_SERVER[3], DEC));
-      #endif
+#endif
     }
     // PORT
-    else if (selectSubMenu == 8){
+    else if (selectSubMenu == 8) {
       // Load from EEPROM
       SERVER_PORT_MQTT = readInt16CInEEPROM(SERVER_PORT_MQTT_Address);
       indexNumber = 0;
       resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(SERVER_PORT_MQTT));
-      #if 0
+#if 0
       Serial.print("Load PORT from EEPROM: ");
       Serial.println(SERVER_PORT_MQTT);
-      #endif
+#endif
     }
 
   } else if (selectMenu == 2 && selectSubMenu > 0 && selectSubMenu1 > 0) {
@@ -1451,7 +1470,7 @@ void EnterSetIP() {
   }
 }
 
-void EnterSetMac(){
+void EnterSetMac() {
   if (selectSubMenu != 3) return;
   if (selectSubMenu1 != 1) return;
   if (selectSubMenu2 == 0) {
@@ -1475,10 +1494,9 @@ void EnterSetMac(){
       lcd.noCursor();
     }
   }
-
 }
 
-void EnterSetGateway(){
+void EnterSetGateway() {
   if (selectSubMenu != 4) return;
   if (selectSubMenu1 != 1) return;
   if (selectSubMenu2 == 0) {
@@ -1502,10 +1520,9 @@ void EnterSetGateway(){
       lcd.noCursor();
     }
   }
-
 }
 
-void EnterSetSubnet(){
+void EnterSetSubnet() {
   if (selectSubMenu != 5) return;
   if (selectSubMenu1 != 1) return;
   if (selectSubMenu2 == 0) {
@@ -1531,7 +1548,7 @@ void EnterSetSubnet(){
   }
 }
 
-void EnterSetDNS(){
+void EnterSetDNS() {
   if (selectSubMenu != 6) return;
   if (selectSubMenu1 != 1) return;
   if (selectSubMenu2 == 0) {
@@ -1557,7 +1574,7 @@ void EnterSetDNS(){
   }
 }
 
-void EnterSetIPServer(){
+void EnterSetIPServer() {
   if (selectSubMenu != 7) return;
   if (selectSubMenu1 != 1) return;
   if (selectSubMenu2 == 0) {
@@ -1583,7 +1600,7 @@ void EnterSetIPServer(){
   }
 }
 
-void EnterSetPort(){
+void EnterSetPort() {
   if (selectSubMenu != 8) return;
   if (selectSubMenu1 != 1) return;
   if (selectSubMenu2 == 0) {
@@ -1606,7 +1623,6 @@ void EnterSetPort(){
       lcd.noCursor();
     }
   }
-
 }
 
 void UpdateCountControlsSCW() {
@@ -1985,7 +2001,7 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
           uint8_t cursorMac = 0;
           String strMac = "";
           indexMacCal(MAC, indexIP, cursorMac, strMac);
-          lcd.setCursor(cursorMac+3, 1);
+          lcd.setCursor(cursorMac + 3, 1);
           lcd.cursor();
           lcd.blink();
           // 1 = 0A:1B:2C:3D
@@ -1995,13 +2011,13 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
           String strMac = "";
           indexMacCal(MAC, indexIP, cursorMac, strMac);
 
-          lcd.setCursor(cursorMac+3, 1);
+          lcd.setCursor(cursorMac + 3, 1);
           lcd.cursor();
           lcd.blink();
           // 2 = 4E:5F
           line2 = "2 =" + strMac;
         }
-      }else{
+      } else {
         selectSubMenu1 = 0;  // reset
       }
     }
@@ -2160,7 +2176,7 @@ void indexMacCal(uint8_t mac[], uint8_t index_input, uint8_t &index_output, Stri
   // index_input <= 3 : xx:xx:xx:xx
   // index_input >3 && index_input< 6: xx:xx
   str_output = "";
-  for (int i = index_input <= 3? 0:4; i < 6; i++) {
+  for (int i = index_input <= 3 ? 0 : 4; i < 6; i++) {
     str_output += mac[i] < 16 ? "0" : "";
     str_output += String(mac[i], HEX);
     if (i < 5) {
