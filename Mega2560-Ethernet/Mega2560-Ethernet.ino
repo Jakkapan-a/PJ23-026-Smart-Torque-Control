@@ -89,12 +89,23 @@ uint8_t totalTonePASS = 1;
 uint32_t lastTimeTonePASS = 0;
 
 uint8_t ngToneCount = 0;
+uint8_t alarmsTone = 0;
 uint8_t totalToneNG = 15;
 uint32_t lastTimeToneNG = 0;
-
+uint32_t lastTimeToneAlarms = 0;
 uint16_t countPressUp = 0;
 uint16_t countPressDown = 0;
 const uint16_t pressTime = 150;
+
+
+uint8_t CountDownCommunicationMES = 0;   // Sec 14
+uint8_t CountDownCommunicationEthernet = 0; // Sec 15
+
+const uint8_t TIME_OUT_COMMUNICATION = 40; // 30 seconds
+
+uint8_t CountUpCommunication = 0;
+const uint8_t TIME_UP_COMMUNICATION = 15; // 15 seconds
+
 
 // Define an array containing letters, numbers, and some symbols
 const char letters[] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -189,7 +200,12 @@ STATUS_TEST status_test = NO_TEST;
 // -------------------- MODEL -------------------- //
 uint8_t indexSelectionModel = 0;
 // -------------------- MENU -------------------- //
-int indexMenu = 0;
+int indexMenu = 0; // 0: Home, 1: Setting 2: MES Serial
+int oldIndexMenu = 0;
+uint8_t indexMesCount = 0;
+const uint8_t maxMesCount = 10;
+String mesSerialData = "";
+
 int selectMenu = 0;
 int selectSubMenu = 0;
 int selectSubMenu1 = 0;
@@ -247,7 +263,7 @@ void serialEvent1() {
     } else if (startReceived1 && inChar == endChar1) {
       inputString1 += String(inChar, DEC);
       endReceived1 = true;
-    } else if (startReceived1) {
+    } else if (startReceived1 && !endReceived1) {
       inputString1 += String(inChar, DEC);
     }
   }
@@ -264,11 +280,11 @@ void serialEvent2() {
     if (inChar == startChar2) {
       startReceived2 = true;
       inputString2 = "";
-      inputString2 += (char)inChar;
+      // inputString2 += (char)inChar;
     } else if (startReceived2 && inChar == endChar2) {
-      inputString2 += (char)inChar;
+      // inputString2 += (char)inChar;
       endReceived2 = true;
-    } else if (startReceived2) {
+    } else if (startReceived2 && !endReceived2) {
       inputString2 += (char)inChar;
     }
   }
@@ -285,21 +301,21 @@ void serialEvent3() {
     if (inChar == startChar3) {
       startReceived3 = true;
       inputString3 = "";
-      inputString3 += (char)inChar;
+      // inputString3 += (char)inChar;
     } else if (startReceived3 && inChar == endChar3) {
-      inputString3 += (char)inChar;
+      // inputString3 += (char)inChar;
       endReceived3 = true;
-    } else if (startReceived3) {
+    } else if (startReceived3 && !endReceived3) {
       inputString3 += (char)inChar;
     }
   }
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial1.begin(9600);
-  Serial2.begin(9600);
-  Serial3.begin(9600);
+  Serial2.begin(115200);
+  Serial3.begin(115200);
 
   lcd.begin();
   lcd.clear();
@@ -338,7 +354,8 @@ void setup() {
   btnScwKey.OnEventChange(btnScwKeyOnEventChange);
   btnCensorOnSt.OnEventChange(btnCensorOnStOnEventChange);
 
-  indexMenu = 0;
+  indexMenu = 0; // 0: Home, 1: Setting 2: MES Serial
+  
   indexSelectionModel = readInt8InEEPROM(0);
   // indexModel
   countScrewMax = getCountControls(addressModel[indexSelectionModel]);
@@ -355,6 +372,18 @@ void setup() {
 
   isAllowMES = false;
   LED_Controls(0);
+
+  status_test = NO_TEST;
+
+  // I2c communication with slave
+  Wire.begin();
+
+  // Set the slave address to 8
+  // Wire.beginTransmission(8);
+  // Wire.write("x is ");
+  // // Wire.write(123);
+  // Wire.endTransmission();
+  
 }
 
 void loop() {
@@ -377,6 +406,8 @@ void loop() {
 
   ToneFun(currentMillis, lastTimeTonePASS, 200, 2000, 50, passToneCount);  //
   ToneFun(currentMillis, lastTimeToneNG, 100, 2000, 50, ngToneCount);
+  
+  ToneFun(currentMillis, lastTimeToneAlarms, 100, 2000, 50, alarmsTone);
 }
 
 
@@ -397,9 +428,6 @@ void mainFunction() {
         status_test = PASS;
         passToneCount = totalTonePASS;
         // off torque
-        // torque.off();
-        // off lock jig
-        // lockJig.off();
         countUnlockJig = countLockJigMax + 1;
         // MES ON
         isAllowMES = true;
@@ -479,9 +507,27 @@ void mainFunction() {
       }
       // Update LCD
       updateLCD(line1.c_str(), line2.c_str());
-    } else {
+    }else if(indexMenu == 1){
       torque.off();
       settingMenu();
+    }
+
+// uint8_t indexMesCount = 0;
+// const uint8_t maxMesCount = 10;
+// String mesSerialData = ""; 
+    else if(indexMenu ==2){
+      String line1 = "Not Allow MES";
+      String line2 = mesSerialData;
+      if(indexMesCount > 0){
+        indexMesCount--;
+        if(indexMesCount == 0){
+          indexMenu = oldIndexMenu;
+        }
+      }
+      if(isAllowMES){
+        line1 = "MES OK";
+      }
+      updateLCD(line1.c_str(), line2.c_str());
     }
     if (pressUnlockJigCountDown > 0) {
       pressUnlockJigCountDown--;
@@ -498,6 +544,21 @@ void mainFunction() {
 
   // -------------------- Debounce 1000 ms ------------------ //
   if (currentMillis - lastDebounceTimeSecond > 1000) {
+    CountUpCommunication++;
+    if (CountUpCommunication > TIME_UP_COMMUNICATION) {
+      CountUpCommunication = 0;
+    }else if(CountUpCommunication == 14){
+      Serial.println("Call status MES");
+      Serial2.println("$STATUS:ASK#");
+    }else if(CountUpCommunication == 15){
+      Serial.println("Call status ETH");
+      Serial3.println("$STATUS:ASK#");
+      // I2c
+      // Wire.beginTransmission(8);
+      // Wire.write("$STATUS:ASK#");
+      // Wire.endTransmission();
+    }
+
     if (countLockJig > 0) {
       countLockJig--;
       if (countLockJig <= 0) {
@@ -519,6 +580,14 @@ void mainFunction() {
     lastDebounceTimeSecond = currentMillis;
   }
 }
+void setMesReceiveData(String data){
+  if(indexMenu != 2){
+    oldIndexMenu = indexMenu;
+  }
+  indexMenu = 2;
+  mesSerialData = data;
+  indexMesCount = maxMesCount;
+}
 
 void manageSerial() {
   if (startReceived && endReceived) {
@@ -529,10 +598,11 @@ void manageSerial() {
     inputString = "";
   }
 }
+
 void manageSerial1() {
   if (startReceived1 && endReceived1) {
     Serial.println(inputString1);
-    Serial3.println("$RFID: " + inputString1+ "#");
+    Serial3.println("$RFID:" + inputString1+ "#");
     Serial.println("--------1----------");
     startReceived1 = false;
     endReceived1 = false;
@@ -544,6 +614,7 @@ void manageSerial1() {
 void manageSerial2() {
   if (startReceived2 && endReceived2) {
     Serial.println(inputString2);
+    parseData(inputString2);
     Serial.println("--------2----------");
     startReceived2 = false;
     endReceived2 = false;
@@ -559,6 +630,47 @@ void manageSerial3() {
     endReceived3 = false;
     inputString3 = "";
   }
+}
+
+
+void parseData(String data) 
+{
+  data.trim();
+  if (data.indexOf("SERIAL:") != -1) {
+    // Send data to MES
+    String serialData = extractData(data, "SERIAL:");
+    setMesReceiveData(serialData);
+    if(isAllowMES == true){
+      Serial.println("Send to MES: " + data);
+      Serial2.println("$"+data+"#");
+      passToneCount = 2;
+    }else{
+      alarmsTone = 15;
+      Serial.println("Not allow send to MES: " + data);
+    }
+    // Save serial data to SD Card
+
+  }else if (data.indexOf("STATUS_MES:") != -1) {
+    // Send data to MES
+    CountDownCommunicationMES = TIME_OUT_COMMUNICATION;
+    // Response to master
+  }
+}
+
+String extractData(String data, String key) {
+  int keyIndex = data.indexOf(key);  // Find the position of the key
+  if (keyIndex == -1) {
+    return "";  // Return 0 if key not found
+  }
+
+  int startIndex = keyIndex + key.length();      // Start index for the number
+  int endIndex = data.indexOf(",", startIndex);  // Find the next comma after the key
+  if (endIndex == -1) {
+    endIndex = data.length();  // If no comma, assume end of string
+  }
+
+  String valueStr = data.substring(startIndex, endIndex);  // Extract the substring
+  return valueStr;                                         // Convert to float and return
 }
 
 
@@ -909,7 +1021,7 @@ void stateButtonPressed() {
                         btnEscOnEventPressed();
                       }
 
-#if 0
+#if 1
   Serial.print("indexMenu: ");
   Serial.println(indexMenu);
   Serial.print("selectMenu: ");
@@ -945,9 +1057,11 @@ void btnEscOnEventPressed() {
     indexMenu = 1;
   } else if (indexMenu == 1) {
     indexMenu = 0;
-    if (stateCensorOnStation && status_test != NG) {
+    if (stateCensorOnStation && status_test != NG && !isAllowMES) {
       torque.on();
     }
+  }else if(indexMenu == 2){
+    indexMenu =0;
   }
   lcd.noBlink();
   lcd.noCursor();
@@ -1746,8 +1860,12 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2) {
     line2 = " STATUS: " + statusServer;  //  STATUS: online or offline
   } else if (_selectMenu == 3) {
     line1 = " SYSTEM";
-    line2 = ">STATUS: " + statusServer;  //  STATUS: online or offline
-  } else if (_selectMenu > 3) {
+    line2 = ">SERVER: " + statusServer;  //  STATUS: online or offline
+  } 
+  
+  
+  
+  else if (_selectMenu > 3) {
     _selectMenu = 0;
   } else if (_selectMenu < 0) {
     _selectMenu = 3;
