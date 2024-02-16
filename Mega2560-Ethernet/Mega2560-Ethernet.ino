@@ -7,6 +7,8 @@
 #include <SD.h>
 
 #define DEBUG 1
+#define BUFFER_SIZE_DATA 255  // Buffer size = 255 bytes or 255 characters
+
 // ------------------- Head Function -------------- //
 void LED_Controls(uint8_t);
 
@@ -98,13 +100,13 @@ uint16_t countPressDown = 0;
 const uint16_t pressTime = 150;
 
 
-uint8_t CountDownCommunicationMES = 0;   // Sec 14
-uint8_t CountDownCommunicationEthernet = 0; // Sec 15
+uint8_t CountDownCommunicationMES = 0;       // Sec 14
+uint8_t CountDownCommunicationEthernet = 0;  // Sec 15
 
-const uint8_t TIME_OUT_COMMUNICATION = 40; // 30 seconds
+const uint8_t TIME_OUT_COMMUNICATION = 40;  // 30 seconds
 
 uint8_t CountUpCommunication = 0;
-const uint8_t TIME_UP_COMMUNICATION = 15; // 15 seconds
+const uint8_t TIME_UP_COMMUNICATION = 15;  // 15 seconds
 
 
 // Define an array containing letters, numbers, and some symbols
@@ -200,7 +202,7 @@ STATUS_TEST status_test = NO_TEST;
 // -------------------- MODEL -------------------- //
 uint8_t indexSelectionModel = 0;
 // -------------------- MENU -------------------- //
-int indexMenu = 0; // 0: Home, 1: Setting 2: MES Serial
+int indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial
 int oldIndexMenu = 0;
 uint8_t indexMesCount = 0;
 const uint8_t maxMesCount = 10;
@@ -229,20 +231,25 @@ boolean endReceived = false;
 
 const char startChar = '$';
 const char endChar = '#';
-String inputString = "";
-
+// String inputString = "";
+char inputString[BUFFER_SIZE_DATA];
+int inputStringLength = 0;
 void serialEvent() {
   while (Serial.available()) {
     byte inChar = (byte)Serial.read();
     if (inChar == startChar) {
       startReceived = true;
-      inputString = "";
-      inputString += (char)inChar;
+      inputStringLength = 0;
     } else if (startReceived && inChar == endChar) {
-      inputString += (char)inChar;
       endReceived = true;
     } else if (startReceived) {
-      inputString += (char)inChar;
+      if (inputStringLength < BUFFER_SIZE_DATA - 1) {
+        inputString[inputStringLength++] = inChar;
+      } else {
+        startReceived = false;
+        endReceived = false;
+        inputStringLength = 0;
+      }
     }
   }
 }
@@ -252,19 +259,25 @@ bool startReceived1 = false;
 bool endReceived1 = false;
 const byte startChar1 = 0x02;
 const byte endChar1 = 0x03;
-String inputString1 = "";
+// String inputString1 = "";
+char inputString1[BUFFER_SIZE_DATA];
+int inputStringLength1 = 0;
 void serialEvent1() {
   while (Serial1.available()) {
     byte inChar = (byte)Serial1.read();
     if (inChar == startChar1) {
       startReceived1 = true;
-      inputString1 = "";
-      inputString1 += String(inChar, DEC);
+      inputStringLength1 = 0;
     } else if (startReceived1 && inChar == endChar1) {
-      inputString1 += String(inChar, DEC);
       endReceived1 = true;
-    } else if (startReceived1 && !endReceived1) {
-      inputString1 += String(inChar, DEC);
+    } else if (startReceived1) {
+      if (inputStringLength1 < BUFFER_SIZE_DATA - 1) {
+        inputString1[inputStringLength1++] = inChar;
+      } else {
+        startReceived1 = false;
+        endReceived1 = false;
+        inputStringLength1 = 0;
+      }
     }
   }
 }
@@ -273,19 +286,25 @@ bool startReceived2 = false;
 bool endReceived2 = false;
 const char startChar2 = '$';
 const char endChar2 = '#';
-String inputString2 = "";
+// String inputString2 = "";
+char inputString2[BUFFER_SIZE_DATA];
+int inputStringLength2 = 0;
 void serialEvent2() {
   while (Serial2.available()) {
     byte inChar = (byte)Serial2.read();
     if (inChar == startChar2) {
       startReceived2 = true;
-      inputString2 = "";
-      // inputString2 += (char)inChar;
+      inputStringLength2 = 0;
     } else if (startReceived2 && inChar == endChar2) {
-      // inputString2 += (char)inChar;
       endReceived2 = true;
-    } else if (startReceived2 && !endReceived2) {
-      inputString2 += (char)inChar;
+    } else if (startReceived2) {
+      if (inputStringLength2 < BUFFER_SIZE_DATA - 1) {
+        inputString2[inputStringLength2++] = inChar;
+      } else {
+        startReceived2 = false;
+        endReceived2 = false;
+        inputStringLength2 = 0;
+      }
     }
   }
 }
@@ -294,19 +313,26 @@ bool startReceived3 = false;
 bool endReceived3 = false;
 const char startChar3 = '$';
 const char endChar3 = '#';
-String inputString3 = "";
+// String inputString3 = "";
+char inputString3[BUFFER_SIZE_DATA];
+int inputStringLength3 = 0;
+
 void serialEvent3() {
   while (Serial3.available()) {
     byte inChar = (byte)Serial3.read();
     if (inChar == startChar3) {
       startReceived3 = true;
-      inputString3 = "";
-      // inputString3 += (char)inChar;
+      inputStringLength3 = 0;
     } else if (startReceived3 && inChar == endChar3) {
-      // inputString3 += (char)inChar;
       endReceived3 = true;
-    } else if (startReceived3 && !endReceived3) {
-      inputString3 += (char)inChar;
+    } else if (startReceived3) {
+      if (inputStringLength3 < BUFFER_SIZE_DATA - 1) {
+        inputString3[inputStringLength3++] = inChar;
+      } else {
+        startReceived3 = false;
+        endReceived3 = false;
+        inputStringLength3 = 0;
+      }
     }
   }
 }
@@ -354,8 +380,8 @@ void setup() {
   btnScwKey.OnEventChange(btnScwKeyOnEventChange);
   btnCensorOnSt.OnEventChange(btnCensorOnStOnEventChange);
 
-  indexMenu = 0; // 0: Home, 1: Setting 2: MES Serial
-  
+  indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial
+
   indexSelectionModel = readInt8InEEPROM(0);
   // indexModel
   countScrewMax = getCountControls(addressModel[indexSelectionModel]);
@@ -376,14 +402,19 @@ void setup() {
   status_test = NO_TEST;
 
   // I2c communication with slave
-  Wire.begin();
+  // Wire.begin();
 
   // Set the slave address to 8
   // Wire.beginTransmission(8);
   // Wire.write("x is ");
   // // Wire.write(123);
   // Wire.endTransmission();
-  
+
+  // Clear
+  memset(inputString, 0, BUFFER_SIZE_DATA);
+  memset(inputString1, 0, BUFFER_SIZE_DATA);
+  memset(inputString2, 0, BUFFER_SIZE_DATA);
+  memset(inputString3, 0, BUFFER_SIZE_DATA);
 }
 
 void loop() {
@@ -406,7 +437,7 @@ void loop() {
 
   ToneFun(currentMillis, lastTimeTonePASS, 200, 2000, 50, passToneCount);  //
   ToneFun(currentMillis, lastTimeToneNG, 100, 2000, 50, ngToneCount);
-  
+
   ToneFun(currentMillis, lastTimeToneAlarms, 100, 2000, 50, alarmsTone);
 }
 
@@ -462,9 +493,6 @@ void mainFunction() {
   unsigned long currentMillis = millis();
   // -------------------- Debounce 10 ms ------------------ //
   if (currentMillis - lastDebounceTime > 10) {
-    // if (indexMenu == 1) {
-    //   // SettingMenu();
-    // }
 
     if (currentStateUp) {
       if (countPressUp > pressTime) {
@@ -507,24 +535,21 @@ void mainFunction() {
       }
       // Update LCD
       updateLCD(line1.c_str(), line2.c_str());
-    }else if(indexMenu == 1){
+    } else if (indexMenu == 1) {
       torque.off();
       settingMenu();
     }
 
-// uint8_t indexMesCount = 0;
-// const uint8_t maxMesCount = 10;
-// String mesSerialData = ""; 
-    else if(indexMenu ==2){
+    else if (indexMenu == 2) {
       String line1 = "Not Allow MES";
       String line2 = mesSerialData;
-      if(indexMesCount > 0){
+      if (indexMesCount > 0) {
         indexMesCount--;
-        if(indexMesCount == 0){
+        if (indexMesCount == 0) {
           indexMenu = oldIndexMenu;
         }
       }
-      if(isAllowMES){
+      if (isAllowMES) {
         line1 = "MES OK";
       }
       updateLCD(line1.c_str(), line2.c_str());
@@ -547,10 +572,10 @@ void mainFunction() {
     CountUpCommunication++;
     if (CountUpCommunication > TIME_UP_COMMUNICATION) {
       CountUpCommunication = 0;
-    }else if(CountUpCommunication == 14){
+    } else if (CountUpCommunication == 14) {
       Serial.println("Call status MES");
       Serial2.println("$STATUS:ASK#");
-    }else if(CountUpCommunication == 15){
+    } else if (CountUpCommunication == 15) {
       Serial.println("Call status ETH");
       Serial3.println("$STATUS:ASK#");
       // I2c
@@ -580,8 +605,8 @@ void mainFunction() {
     lastDebounceTimeSecond = currentMillis;
   }
 }
-void setMesReceiveData(String data){
-  if(indexMenu != 2){
+void setMesReceiveData(String data) {
+  if (indexMenu != 2) {
     oldIndexMenu = indexMenu;
   }
   indexMenu = 2;
@@ -595,18 +620,23 @@ void manageSerial() {
     Serial.println("--------0----------");
     startReceived = false;
     endReceived = false;
-    inputString = "";
+    // Clear
+    memset(inputString, 0, BUFFER_SIZE_DATA);
+    inputStringLength1 = 0;
   }
 }
 
 void manageSerial1() {
   if (startReceived1 && endReceived1) {
     Serial.println(inputString1);
-    Serial3.println("$RFID:" + inputString1+ "#");
+    Serial3.print("$RFID:");
+    Serial3.print(inputString1);
+    Serial3.println("#");
     Serial.println("--------1----------");
     startReceived1 = false;
     endReceived1 = false;
-    inputString1 = "";
+    memset(inputString1, 0, BUFFER_SIZE_DATA);
+    inputStringLength1 = 0;
     passToneCount = 1;
   }
 }
@@ -618,7 +648,8 @@ void manageSerial2() {
     Serial.println("--------2----------");
     startReceived2 = false;
     endReceived2 = false;
-    inputString2 = "";
+    memset(inputString2, 0, BUFFER_SIZE_DATA);
+    inputStringLength2 = 0;
   }
 }
 
@@ -628,29 +659,29 @@ void manageSerial3() {
     Serial.println("--------3----------");
     startReceived3 = false;
     endReceived3 = false;
-    inputString3 = "";
+    memset(inputString3, 0, BUFFER_SIZE_DATA);
+    inputStringLength3 = 0;
   }
 }
 
 
-void parseData(String data) 
-{
+void parseData(String data) {
   data.trim();
   if (data.indexOf("SERIAL:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "SERIAL:");
     setMesReceiveData(serialData);
-    if(isAllowMES == true){
+    if (isAllowMES == true) {
       Serial.println("Send to MES: " + data);
-      Serial2.println("$"+data+"#");
+      Serial2.println("$" + data + "#");
       passToneCount = 2;
-    }else{
+    } else {
       alarmsTone = 15;
       Serial.println("Not allow send to MES: " + data);
     }
     // Save serial data to SD Card
 
-  }else if (data.indexOf("STATUS_MES:") != -1) {
+  } else if (data.indexOf("STATUS_MES:") != -1) {
     // Send data to MES
     CountDownCommunicationMES = TIME_OUT_COMMUNICATION;
     // Response to master
@@ -1006,20 +1037,20 @@ void stateButtonPressed() {
           if (!stateEsc && !stateUp && stateDown && !stateEnter) {
             btnDownOnEventPressed();
           } else
-              // 0 1 0 0
-              if (!stateEsc && stateUp && !stateDown && !stateEnter) {
-                btnUpOnEventPressed();
-              } else            
-                  // 0 1 1 0
-                  if (!stateEsc && stateUp && stateDown && !stateEnter) {
-                    // btnUpOnEventPressed();
-                    btnUpDownOnEventPressed();
-                    // Serial.println("UP DOWN");
-                  } else
-                      // 1 0 0 0
-                      if (stateEsc && !stateUp && !stateDown && !stateEnter) {
-                        btnEscOnEventPressed();
-                      }
+            // 0 1 0 0
+            if (!stateEsc && stateUp && !stateDown && !stateEnter) {
+              btnUpOnEventPressed();
+            } else
+              // 0 1 1 0
+              if (!stateEsc && stateUp && stateDown && !stateEnter) {
+                // btnUpOnEventPressed();
+                btnUpDownOnEventPressed();
+                // Serial.println("UP DOWN");
+              } else
+                // 1 0 0 0
+                if (stateEsc && !stateUp && !stateDown && !stateEnter) {
+                  btnEscOnEventPressed();
+                }
 
 #if 1
   Serial.print("indexMenu: ");
@@ -1060,8 +1091,8 @@ void btnEscOnEventPressed() {
     if (stateCensorOnStation && status_test != NG && !isAllowMES) {
       torque.on();
     }
-  }else if(indexMenu == 2){
-    indexMenu =0;
+  } else if (indexMenu == 2) {
+    indexMenu = 0;
   }
   lcd.noBlink();
   lcd.noCursor();
@@ -1861,10 +1892,10 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2) {
   } else if (_selectMenu == 3) {
     line1 = " SYSTEM";
     line2 = ">SERVER: " + statusServer;  //  STATUS: online or offline
-  } 
-  
-  
-  
+  }
+
+
+
   else if (_selectMenu > 3) {
     _selectMenu = 0;
   } else if (_selectMenu < 0) {
