@@ -8,6 +8,18 @@
 #include <SPI.h>
 #include <TcPINOUT.h>
 
+#define LED_STATUS 13
+#define RETURN_KEY 13 // Enter key code
+#define TIME_OUT_COMMUNICATION 40 // 40 seconds
+
+#define BUFFER_SIZE_CHAR 255 // Buffer size = 255 bytes or 255 characters
+char receivedData[BUFFER_SIZE_CHAR];
+int receivedDataLength = 0;
+boolean isDataReceived = false;
+uint8_t countDownReceiveData = 0;
+#define TIME_COUNT_DOWN_RECEIVE_DATA 3 // 3 seconds
+
+// ----------------- Functions -----------------
 class KbdRptParser : public KeyboardReportParser
 {
     void PrintKey(uint8_t mod, uint8_t key);
@@ -45,8 +57,19 @@ void KbdRptParser::OnKeyDown(uint8_t mod, uint8_t key)
   // PrintKey(mod, key);
   uint8_t c = OemToAscii(mod, key);
 
-  if (c)
-    OnKeyPressed(c);
+  // if (c)
+  //   OnKeyPressed(c);
+
+  if (c && receivedDataLength < BUFFER_SIZE_CHAR - 1) { // check if there is a valid ASCII value and if there is space in the buffer
+    receivedData[receivedDataLength++] = c;
+    countDownReceiveData = TIME_COUNT_DOWN_RECEIVE_DATA;
+    if (c == RETURN_KEY) {
+      // Serial.println("Enter key pressed");
+      receivedData[receivedDataLength] = '\0'; // terminate the string
+      isDataReceived = true;
+      countDownReceiveData = 0;
+    }
+  }
 }
 
 void KbdRptParser::OnControlKeysChanged(uint8_t before, uint8_t after) {
@@ -57,87 +80,61 @@ void KbdRptParser::OnControlKeysChanged(uint8_t before, uint8_t after) {
   MODIFIERKEYS afterMod;
   *((uint8_t*)&afterMod) = after;
 
-  // if (beforeMod.bmLeftCtrl != afterMod.bmLeftCtrl) {
-  //   Serial.println("LeftCtrl changed");
-  // }
-  // if (beforeMod.bmLeftShift != afterMod.bmLeftShift) {
-  //   Serial.println("LeftShift changed");
-  // }
-  // if (beforeMod.bmLeftAlt != afterMod.bmLeftAlt) {
-  //   Serial.println("LeftAlt changed");
-  // }
-  // if (beforeMod.bmLeftGUI != afterMod.bmLeftGUI) {
-  //   Serial.println("LeftGUI changed");
-  // }
-
-  // if (beforeMod.bmRightCtrl != afterMod.bmRightCtrl) {
-  //   Serial.println("RightCtrl changed");
-  // }
-  // if (beforeMod.bmRightShift != afterMod.bmRightShift) {
-  //   Serial.println("RightShift changed");
-  // }
-  // if (beforeMod.bmRightAlt != afterMod.bmRightAlt) {
-  //   Serial.println("RightAlt changed");
-  // }
-  // if (beforeMod.bmRightGUI != afterMod.bmRightGUI) {
-  //   Serial.println("RightGUI changed");
-  // }
-
 }
-
 void KbdRptParser::OnKeyUp(uint8_t mod, uint8_t key)
 {
   // Serial.print("UP ");
   // PrintKey(mod, key);
 }
 
-String receivedData = "";
-uint8_t returnKey = 13; // Enter key code is 13
-boolean isDataReceived = false;
 void KbdRptParser::OnKeyPressed(uint8_t key)
 {
-  // Serial.print((char)key);
-  if (key == returnKey) {
-    isDataReceived = true;
-  } else {
-    receivedData += (char)key;
-  }
+  // Serial.print("ASCII: ");
+  Serial.print((char)key);
 };
 
 USB     Usb;
-USBHub     Hub(&Usb);
+//USBHub     Hub(&Usb);
 HIDBoot<USB_HID_PROTOCOL_KEYBOARD>    HidKeyboard(&Usb);
 
+
 KbdRptParser Prs;
-// ----------------- OUTPUT -----------------
-#define LED_STATUS 13
-TcPINOUT ledStatus(LED_STATUS, false);
+
 
 // ----------------- Variables -----------------
 uint32_t lastDebounceTimeSecond = 0;  // the last time the output pin was toggled
 uint32_t lastDebounceTimeMillis= 0;  // the last time the output pin was toggled
 
 uint8_t CountDownCommunication = 0;
-const uint8_t TIME_OUT_COMMUNICATION = 40; // 30 seconds
+
+// ----------------- OUTPUT -----------------
+#define LED_STATUS 13
+TcPINOUT ledStatus(LED_STATUS, false);
 
 // ----------------- Serial 1 -----------------
 bool startReceived1 = false;
 bool endReceived1 = false;
 const char startChar1 = '$';
 const char endChar1 = '#';
-String inputString1 = "";
+// String inputString1 = "";
+char inputString1[BUFFER_SIZE_CHAR];
+int inputString1Length = 0;
 void serialEvent1() {
   while (Serial1.available()) {
     char inChar = (char)Serial1.read();
-    if ((char)inChar == startChar1) {
+    if (inChar == startChar1) {
       startReceived1 = true;
-      inputString1 = "";
-      // inputString1 += String(inChar, DEC);
-    } else if (startReceived1 && (char)inChar == endChar1) {
-      // inputString1 += String(inChar, DEC);
+      inputString1Length = 0;
+    } else if (startReceived1 && inChar == endChar1) {
       endReceived1 = true;
-    } else if (startReceived1 && !endReceived1) {
-      inputString1 += (char)inChar;
+    } else if (startReceived1) {
+      if(inputString1Length < BUFFER_SIZE_CHAR - 1){
+        inputString1[inputString1Length++] = inChar;
+      }else{
+        startReceived1 = false;
+        endReceived1 = false;
+        inputString1Length = 0;
+      }
     }
   }
 }
@@ -157,27 +154,26 @@ void setup()
   delay( 200 );
   HidKeyboard.SetReportParser(0, &Prs);
   Keyboard.begin();
+  memset(receivedData, 0, BUFFER_SIZE_CHAR); // Clear buffer
 }
 void loop()
 {
   Usb.Task();
-
   if (isDataReceived) {
     Serial.print("Keyboard : ");
     Serial.println(receivedData);
-    // Serial.println("$SERIAL:" + receivedData+"#");
-    // Serial1.println("$SERIAL:" + receivedData+"#");
-    Serial1.write("$SERIAL:");
-    for(int i = 0; i < receivedData.length(); i++){
-      Serial1.write(receivedData[i]);
-    }
     
-    Serial1.write("#");
-    receivedData = "";
+    Serial1.print("$SERIAL:");
+    Serial1.print(receivedData);
+    Serial1.print("#");
+  
+    // 
+    memset(receivedData, 0, BUFFER_SIZE_CHAR);
+    receivedDataLength = 0;
     isDataReceived = false;
-    delay(1);
   }
 
+  manageSerial1();
   uint32_t currentTime = millis();
   // ----------------- 1 Second -----------------
   if (currentTime - lastDebounceTimeSecond > 1000) {
@@ -194,17 +190,24 @@ void loop()
   // ------------------ 0.5 Second ------------------
   if (currentTime - lastDebounceTimeMillis > 500) {
     lastDebounceTimeMillis = currentTime;
-    if (CountDownCommunication > 0) {
+    if (CountDownCommunication >1) {
       ledStatus.toggle();
- 
-    }else{
+    }else if(CountDownCommunication == 1) {
       ledStatus.on();
     }
+
+    if(countDownReceiveData > 0){
+      countDownReceiveData--;
+      if(countDownReceiveData == 0){
+        receivedData[receivedDataLength] = '\0'; // terminate the string
+        isDataReceived = true;
+      }
+    }
+
   }else if(currentTime < lastDebounceTimeMillis){
     lastDebounceTimeMillis = currentTime;
   }
-
-  manageSerial1();
+  
 }
 
 void manageSerial1() {
@@ -214,7 +217,8 @@ void manageSerial1() {
     Serial.println("--------1----------");
     startReceived1 = false;
     endReceived1 = false;
-    inputString1 = "";
+    inputString1Length = 0;
+    memset(inputString1, 0, BUFFER_SIZE_CHAR);
   }
 }
 
@@ -228,10 +232,10 @@ void parseData(String data)
     // Keyboard.print(serialData);
     for(int i = 0; i < serialData.length(); i++){
       Keyboard.write(serialData[i]);
-      delay(1);
+      // delay(1);
     }
     Keyboard.press(KEY_RETURN);
-    delay(1);
+    // delay(1);
     Keyboard.releaseAll();
   }else if (data.indexOf("STATUS:") != -1) {
     // Send data to MES
