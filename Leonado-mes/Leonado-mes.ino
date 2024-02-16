@@ -64,7 +64,6 @@ void KbdRptParser::OnKeyDown(uint8_t mod, uint8_t key)
     receivedData[receivedDataLength++] = c;
     countDownReceiveData = TIME_COUNT_DOWN_RECEIVE_DATA;
     if (c == RETURN_KEY) {
-      // Serial.println("Enter key pressed");
       receivedData[receivedDataLength] = '\0'; // terminate the string
       isDataReceived = true;
       countDownReceiveData = 0;
@@ -83,14 +82,12 @@ void KbdRptParser::OnControlKeysChanged(uint8_t before, uint8_t after) {
 }
 void KbdRptParser::OnKeyUp(uint8_t mod, uint8_t key)
 {
-  // Serial.print("UP ");
-  // PrintKey(mod, key);
 }
 
 void KbdRptParser::OnKeyPressed(uint8_t key)
 {
   // Serial.print("ASCII: ");
-  Serial.print((char)key);
+  // Serial.print((char)key);
 };
 
 USB     Usb;
