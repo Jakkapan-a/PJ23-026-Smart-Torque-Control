@@ -99,14 +99,18 @@ uint16_t countPressUp = 0;
 uint16_t countPressDown = 0;
 const uint16_t pressTime = 150;
 
+boolean statusServer = false;
+boolean statusMES = false;
+boolean statusETH = false;
 
-uint8_t CountDownCommunicationMES = 0;       // Sec 14
-uint8_t CountDownCommunicationEthernet = 0;  // Sec 15
+uint8_t countDownStatusServer = 0;    // Sec 13
+uint8_t countDownStatusETH = 0;  // Sec 12
+uint8_t countDownStatusMES = 0;       // Sec 10
 
-const uint8_t TIME_OUT_COMMUNICATION = 40;  // 30 seconds
+#define TIME_OUT_COMMUNICATION 20 // 20 seconds
 
 uint8_t CountUpCommunication = 0;
-const uint8_t TIME_UP_COMMUNICATION = 15;  // 15 seconds
+#define TIME_UP_COMMUNICATION 14 // 14 seconds
 
 
 // Define an array containing letters, numbers, and some symbols
@@ -123,7 +127,12 @@ const char lettersNumber[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' 
 int numCharsNumber = sizeof(lettersNumber) - 1;
 int indexCharNumber = 0;
 
-String statusServer = "Offline";
+
+
+
+boolean isAllowMES = false;
+
+
 String model = "";
 
 String modelSetName = "";
@@ -185,7 +194,6 @@ uint8_t pressUnlockJigCountDown = 0;
 uint32_t lastDebounceTime, lastDebounceTimeMillis, lastDebounceTimeSecond = 0;
 boolean stateStart, stateStop = false;
 
-boolean isAllowMES = false;
 
 boolean stateLockJig = false;
 int countLockJig = 0;
@@ -202,11 +210,11 @@ STATUS_TEST status_test = NO_TEST;
 // -------------------- MODEL -------------------- //
 uint8_t indexSelectionModel = 0;
 // -------------------- MENU -------------------- //
-int indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial
+int indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial 3: RFID 
 int oldIndexMenu = 0;
-uint8_t indexMesCount = 0;
-const uint8_t maxMesCount = 10;
-String mesSerialData = "";
+uint8_t countIndexMenu = 0;
+#define maxMenuCount 10;
+String displayData = "";
 
 int selectMenu = 0;
 int selectSubMenu = 0;
@@ -539,21 +547,36 @@ void mainFunction() {
       torque.off();
       settingMenu();
     }
-
+    // ----- MENU 2 ----- //
     else if (indexMenu == 2) {
       String line1 = "Not Allow MES";
-      String line2 = mesSerialData;
-      if (indexMesCount > 0) {
-        indexMesCount--;
-        if (indexMesCount == 0) {
-          indexMenu = oldIndexMenu;
-        }
-      }
+      String line2 = displayData;
+     
       if (isAllowMES) {
         line1 = "MES OK";
       }
       updateLCD(line1.c_str(), line2.c_str());
     }
+    // ----- MENU 3 RFID REQUEST ----- //
+    else if (indexMenu == 3) {
+      String line1 = "RFID REQUEST";
+      String line2 = displayData;
+      updateLCD(line1.c_str(), line2.c_str());
+    }
+    // ----- MENU 4 RFID RESPONSE ----- //
+    else if (indexMenu == 4) {
+      String line1 = "RFID RESPONSE";
+      String line2 = displayData;
+      updateLCD(line1.c_str(), line2.c_str());
+    }
+
+     if (countIndexMenu > 0) {
+        countIndexMenu--;
+        if (countIndexMenu == 0) {
+          indexMenu = oldIndexMenu;
+        }
+      }
+      
     if (pressUnlockJigCountDown > 0) {
       pressUnlockJigCountDown--;
       if (pressUnlockJigCountDown <= 0) {
@@ -572,18 +595,46 @@ void mainFunction() {
     CountUpCommunication++;
     if (CountUpCommunication > TIME_UP_COMMUNICATION) {
       CountUpCommunication = 0;
-    } else if (CountUpCommunication == 14) {
+    }
+     else if (CountUpCommunication == 1) {
       Serial.println("Call status MES");
       Serial2.println("$STATUS:ASK#");
-    } else if (CountUpCommunication == 15) {
+    } else if (CountUpCommunication == 2) {
       Serial.println("Call status ETH");
       Serial3.println("$STATUS:ASK#");
-      // I2c
-      // Wire.beginTransmission(8);
-      // Wire.write("$STATUS:ASK#");
-      // Wire.endTransmission();
+    }else if (CountUpCommunication == 3) {
+      Serial.println("Call status SERVER");
+      Serial3.println("$STATUS_SERVER:ASK#");
     }
 
+    if(countDownStatusServer > 0){
+      countDownStatusServer--;
+      if(countDownStatusServer == 0){
+        statusServer = false;
+      }else{
+        statusServer = true;
+      }
+    }
+
+    if(countDownStatusETH > 0){
+      countDownStatusETH--;
+      if(countDownStatusETH == 0){
+        statusETH = false;
+      }else{
+        statusETH = true;
+      }
+    }
+
+    if(countDownStatusMES > 0){
+      countDownStatusMES--;
+      if(countDownStatusMES == 0){
+        statusMES = false;
+      }else{
+        statusMES = true;
+      }
+    }
+
+    // ----------- LOCK JIG ------------ //
     if (countLockJig > 0) {
       countLockJig--;
       if (countLockJig <= 0) {
@@ -605,18 +656,21 @@ void mainFunction() {
     lastDebounceTimeSecond = currentMillis;
   }
 }
-void setMesReceiveData(String data) {
-  if (indexMenu != 2) {
+
+void setMenuShowErrorWithData(int index, String data) {
+  if (indexMenu != index && countIndexMenu == 0) 
+  {
     oldIndexMenu = indexMenu;
   }
-  indexMenu = 2;
-  mesSerialData = data;
-  indexMesCount = maxMesCount;
+  indexMenu = index;
+  displayData = data;
+  countIndexMenu = maxMenuCount;
 }
 
 void manageSerial() {
   if (startReceived && endReceived) {
     Serial.println(inputString);
+     parseData(inputString);
     Serial.println("--------0----------");
     startReceived = false;
     endReceived = false;
@@ -628,16 +682,31 @@ void manageSerial() {
 
 void manageSerial1() {
   if (startReceived1 && endReceived1) {
-    Serial.println(inputString1);
+    // Serial.println(inputString1,DEC);
+    String data = "";
+    for(int i = 0; i < inputStringLength1; i++){
+      Serial.print(inputString1[i],HEX);
+      data += String(inputString1[i],BIN);
+    }
+    Serial.println();
+    Serial.print("Data: ");
+    Serial.println(data);
+
     Serial3.print("$RFID:");
     Serial3.print(inputString1);
     Serial3.println("#");
+    if(!statusServer){
+      setMenuShowErrorWithData(3,"Server fail!");
+      alarmsTone = 10;
+    }else{
+      setMenuShowErrorWithData(3,inputString1);
+    }
     Serial.println("--------1----------");
     startReceived1 = false;
     endReceived1 = false;
     memset(inputString1, 0, BUFFER_SIZE_DATA);
     inputStringLength1 = 0;
-    passToneCount = 1;
+    passToneCount += 1;
   }
 }
 
@@ -656,6 +725,7 @@ void manageSerial2() {
 void manageSerial3() {
   if (startReceived3 && endReceived3) {
     Serial.println(inputString3);
+    parseData(inputString3);
     Serial.println("--------3----------");
     startReceived3 = false;
     endReceived3 = false;
@@ -670,7 +740,7 @@ void parseData(String data) {
   if (data.indexOf("SERIAL:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "SERIAL:");
-    setMesReceiveData(serialData);
+    setMenuShowErrorWithData(2,serialData);
     if (isAllowMES == true) {
       Serial.println("Send to MES: " + data);
       Serial2.println("$" + data + "#");
@@ -683,8 +753,28 @@ void parseData(String data) {
 
   } else if (data.indexOf("STATUS_MES:") != -1) {
     // Send data to MES
-    CountDownCommunicationMES = TIME_OUT_COMMUNICATION;
+    countDownStatusMES = TIME_OUT_COMMUNICATION;
     // Response to master
+  }else if (data.indexOf("STATUS_SERVER:") != -1) {
+    // Send data to MES
+    countDownStatusServer = TIME_OUT_COMMUNICATION;
+    // Response to master
+  }else if (data.indexOf("STATUS_ETH:") != -1) {
+    // Send data to MES
+    countDownStatusETH = TIME_OUT_COMMUNICATION;
+    // Response to master
+  }else if(data.indexOf("RFID_RES:") != 1)
+  {
+    String rfidData = extractData(data, "RFID_RES:");
+    if(rfidData == "OK"){
+      setMenuShowErrorWithData(4,"PASS");
+      countLockJig = countLockJigMax;
+      passToneCount += 1;
+      btnScwKeyOnEventChange(false); // Unlock jig
+    }else{
+      setMenuShowErrorWithData(4,"Not allow");
+      alarmsTone = 15;
+    }
   }
 }
 
@@ -1494,7 +1584,6 @@ void EnterSetName() {
         delay(1000);
         // Update LCD
         updateLCD("Save Completed ", "               ");
-        // resetIndexChar();
         resetIndex(letters, indexChar, indexModelName, modelSetName);
         selectSubMenu2 = 0;
       }
@@ -1888,18 +1977,21 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2) {
     line2 = ">SETTING MODEL";
   } else if (_selectMenu == 2) {
     line1 = ">SYSTEM";
-    line2 = " STATUS: " + statusServer;  //  STATUS: online or offline
+    line2 = " SERVER: " + String(statusServer ? "ONLINE" : "OFFLINE");  //  STATUS: online or offline
   } else if (_selectMenu == 3) {
     line1 = " SYSTEM";
-    line2 = ">SERVER: " + statusServer;  //  STATUS: online or offline
+    line2 = ">SERVER: " + String(statusServer ? "ONLINE" : "OFFLINE");  //  STATUS: online or offline
+  }else if (_selectMenu == 4) {
+    line1 = ">UNO: "+String(statusETH?"TRUE":"FALSE");
+    line2 = " H-USB: "+String(statusMES?"TRUE":"FALSE");  //  STATUS: online or offline
+  }else if(_selectMenu == 5){
+    line1 = " UNO: "+String(statusETH?"TRUE":"FALSE");
+    line2 = ">H-USB: "+String(statusMES?"TRUE":"FALSE");  //  STATUS: online or offline
   }
-
-
-
-  else if (_selectMenu > 3) {
+  else if (_selectMenu > 5) {
     _selectMenu = 0;
   } else if (_selectMenu < 0) {
-    _selectMenu = 3;
+    _selectMenu = 5;
   }
 }
 
