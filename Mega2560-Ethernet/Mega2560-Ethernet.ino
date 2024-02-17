@@ -116,8 +116,8 @@ uint8_t CountUpCommunication = 0;
 #define TIME_UP_COMMUNICATION 14  // 14 seconds
 
 // 16/02/2024
-#define BUFFER_DATE 10
-#define BUFFER_TIME 8  // 00:00:00
+#define BUFFER_DATE 20 
+#define BUFFER_TIME 10  // 00:00:00
 char myDate[BUFFER_DATE];
 char myTime[BUFFER_TIME];
 
@@ -136,18 +136,13 @@ const char lettersNumber[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' 
 int numCharsNumber = sizeof(lettersNumber) - 1;
 int indexCharNumber = 0;
 
-
-
-
 boolean isAllowMES = false;
-
 
 String model = "";
 
 String modelSetName = "";
 int indexModelName = 0;       // Index edit model name
 uint8_t lengthNameModel = 5;  // 5 Digit
-
 
 const int ID_Address = 321;  // 321 - 325 = 5 byte or 5 digit
 String id = "";
@@ -282,6 +277,7 @@ int inputStringLength1 = 0;
 void serialEvent1() {
   while (Serial1.available()) {
     byte inChar = (byte)Serial1.read();
+    // Serial.print((char)inChar);
     if (inChar == startChar1) {
       startReceived1 = true;
       inputStringLength1 = 0;
@@ -297,6 +293,7 @@ void serialEvent1() {
       }
     }
   }
+  //  Serial.println("");
 }
 // -------------------- SERIAL 2 -------------------- //
 bool startReceived2 = false;
@@ -364,8 +361,10 @@ void setup() {
   lcd.clear();
 
   String dot = ".";
+  Serial.println("Initializing SD");
   updateLCD("Initializing SD", dot.c_str());
   delay(100);
+
   while (!SD.begin(SD_CS)) {
     for (int i = 0; i < 15; i++) {
       updateLCD("Initial SD Card", dot.c_str());
@@ -373,7 +372,7 @@ void setup() {
       if (dot.length() > 15) {
         dot = ".";
       }
-      delay(500);
+      delay(300);
     }
     delay(100);
   }
@@ -546,11 +545,7 @@ void mainFunction() {
 
   // -------------------- Debounce 100 ms ------------------ //
   if (currentMillis - lastDebounceTimeMillis > 100) {
-    // uint32_t _currentMillis = millis();
-      // clockdate();
-      // uint32_t _callTime = millis() - _currentMillis;
-      // 
-      // Serial.println("Time: " + String(_callTime) + "ms");
+ 
     if (indexMenu == 0) {
       // Home display
       String line1 = "MODEL : " + model;
@@ -615,7 +610,11 @@ void mainFunction() {
 
   // -------------------- Debounce 1000 ms ------------------ //
   if (currentMillis - lastDebounceTimeSecond > 1000) {
-
+   // uint32_t _currentMillis = millis();
+      clockdate();
+      // uint32_t _callTime = millis() - _currentMillis;
+      // 
+      // Serial.println("Time: " + String(_callTime) + "ms");
 
 
     CountUpCommunication++;
@@ -783,6 +782,7 @@ void manageSerial3() {
 
 void parseData(String data) {
   data.trim();
+
   if (data.indexOf("SERIAL:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "SERIAL:");
@@ -809,8 +809,9 @@ void parseData(String data) {
     // Send data to MES
     countDownStatusETH = TIME_OUT_COMMUNICATION;
     // Response to master
-  } else if (data.indexOf("RFID_RES:") != 1) {
+  } else if (data.indexOf("RFID_RES:") != -1) {
     String rfidData = extractData(data, "RFID_RES:");
+    
     if (rfidData == "OK") {
       setMenuShowErrorWithData(4, "PASS");
       countLockJig = countLockJigMax;
@@ -2033,11 +2034,11 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2) {
     line1 = " UNO: " + String(statusETH ? "TRUE" : "FALSE");
     line2 = ">H-USB: " + String(statusMES ? "TRUE" : "FALSE");  //  STATUS: online or offline
   } else if (_selectMenu == 6) {
-    line1 = ">DATE: " + String(myDate);
-    line2 = " TIME: " + String(myTime);
+    line1 = ">DATE:" + String(myDate);
+    line2 = " TIME:" + String(myTime);
   } else if (_selectMenu == 7) {
-    line1 = " DATE: " + String(myDate);
-    line2 = ">TIME: " + String(myTime);
+    line1 = " DATE:" + String(myDate);
+    line2 = ">TIME:" + String(myTime);
   } else if (_selectMenu > 7) {
     _selectMenu = 0;
   } else if (_selectMenu < 0) {
