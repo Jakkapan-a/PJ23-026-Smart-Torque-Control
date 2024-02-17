@@ -5,6 +5,9 @@
 #include <EEPROM.h>
 #include <SPI.h>
 #include <SD.h>
+#include "DS1302.h"
+
+DS1302 rtc(2, 3, 4);  // RST, DAT, CLK
 
 #define DEBUG 1
 #define BUFFER_SIZE_DATA 255  // Buffer size = 255 bytes or 255 characters
@@ -80,7 +83,7 @@ TcPINOUT lockJig(LOCK_JIG_PIN, false);
 TcPINOUT tickerUnlockJig(TICKER_UNLOCK_JIG, true);
 
 // -------------------- BUZZER -------------------- //
-#define BUZZER_PIN 2
+#define BUZZER_PIN 6
 // -------------------- EEPROM -------------------- //
 int addressModel[10] = { 1, 33, 65, 97, 129, 161, 193, 225, 257, 289 };
 int indexAddressModel = 0;
@@ -103,14 +106,20 @@ boolean statusServer = false;
 boolean statusMES = false;
 boolean statusETH = false;
 
-uint8_t countDownStatusServer = 0;    // Sec 13
-uint8_t countDownStatusETH = 0;  // Sec 12
-uint8_t countDownStatusMES = 0;       // Sec 10
+uint8_t countDownStatusServer = 0;  // Sec 13
+uint8_t countDownStatusETH = 0;     // Sec 12
+uint8_t countDownStatusMES = 0;     // Sec 10
 
-#define TIME_OUT_COMMUNICATION 20 // 20 seconds
+#define TIME_OUT_COMMUNICATION 20  // 20 seconds
 
 uint8_t CountUpCommunication = 0;
-#define TIME_UP_COMMUNICATION 14 // 14 seconds
+#define TIME_UP_COMMUNICATION 14  // 14 seconds
+
+// 16/02/2024
+#define BUFFER_DATE 10
+#define BUFFER_TIME 8  // 00:00:00
+char myDate[BUFFER_DATE];
+char myTime[BUFFER_TIME];
 
 
 // Define an array containing letters, numbers, and some symbols
@@ -210,7 +219,7 @@ STATUS_TEST status_test = NO_TEST;
 // -------------------- MODEL -------------------- //
 uint8_t indexSelectionModel = 0;
 // -------------------- MENU -------------------- //
-int indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial 3: RFID 
+int indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial 3: RFID
 int oldIndexMenu = 0;
 uint8_t countIndexMenu = 0;
 #define maxMenuCount 10;
@@ -423,6 +432,13 @@ void setup() {
   memset(inputString1, 0, BUFFER_SIZE_DATA);
   memset(inputString2, 0, BUFFER_SIZE_DATA);
   memset(inputString3, 0, BUFFER_SIZE_DATA);
+
+  // rtc.halt(false);
+  // rtc.writeProtect(false);
+  // rtc.setDOW(FRIDAY);
+  // rtc.setTime(19, 53,00);
+  // rtc.setDate(16, 2, 2024);
+  // rtc.writeProtect(true);
 }
 
 void loop() {
@@ -530,6 +546,11 @@ void mainFunction() {
 
   // -------------------- Debounce 100 ms ------------------ //
   if (currentMillis - lastDebounceTimeMillis > 100) {
+    // uint32_t _currentMillis = millis();
+      // clockdate();
+      // uint32_t _callTime = millis() - _currentMillis;
+      // 
+      // Serial.println("Time: " + String(_callTime) + "ms");
     if (indexMenu == 0) {
       // Home display
       String line1 = "MODEL : " + model;
@@ -551,7 +572,7 @@ void mainFunction() {
     else if (indexMenu == 2) {
       String line1 = "Not Allow MES";
       String line2 = displayData;
-     
+
       if (isAllowMES) {
         line1 = "MES OK";
       }
@@ -570,13 +591,15 @@ void mainFunction() {
       updateLCD(line1.c_str(), line2.c_str());
     }
 
-     if (countIndexMenu > 0) {
-        countIndexMenu--;
-        if (countIndexMenu == 0) {
-          indexMenu = oldIndexMenu;
-        }
+
+
+    if (countIndexMenu > 0) {
+      countIndexMenu--;
+      if (countIndexMenu == 0) {
+        indexMenu = oldIndexMenu;
       }
-      
+    }
+
     if (pressUnlockJigCountDown > 0) {
       pressUnlockJigCountDown--;
       if (pressUnlockJigCountDown <= 0) {
@@ -592,48 +615,50 @@ void mainFunction() {
 
   // -------------------- Debounce 1000 ms ------------------ //
   if (currentMillis - lastDebounceTimeSecond > 1000) {
+
+
+
     CountUpCommunication++;
     if (CountUpCommunication > TIME_UP_COMMUNICATION) {
       CountUpCommunication = 0;
-    }
-     else if (CountUpCommunication == 1) {
+    } else if (CountUpCommunication == 1) {
       Serial.println("Call status MES");
       Serial2.println("$STATUS:ASK#");
     } else if (CountUpCommunication == 2) {
       Serial.println("Call status ETH");
       Serial3.println("$STATUS:ASK#");
-    }else if (CountUpCommunication == 3) {
+    } else if (CountUpCommunication == 3) {
       Serial.println("Call status SERVER");
       Serial3.println("$STATUS_SERVER:ASK#");
     }
 
-    if(countDownStatusServer > 0){
+    if (countDownStatusServer > 0) {
       countDownStatusServer--;
-      if(countDownStatusServer == 0){
+      if (countDownStatusServer == 0) {
         statusServer = false;
-      }else{
+      } else {
         statusServer = true;
       }
     }
 
-    if(countDownStatusETH > 0){
+    if (countDownStatusETH > 0) {
       countDownStatusETH--;
-      if(countDownStatusETH == 0){
+      if (countDownStatusETH == 0) {
         statusETH = false;
-      }else{
+      } else {
         statusETH = true;
       }
     }
 
-    if(countDownStatusMES > 0){
+    if (countDownStatusMES > 0) {
       countDownStatusMES--;
-      if(countDownStatusMES == 0){
+      if (countDownStatusMES == 0) {
         statusMES = false;
-      }else{
+      } else {
         statusMES = true;
       }
     }
-
+  
     // ----------- LOCK JIG ------------ //
     if (countLockJig > 0) {
       countLockJig--;
@@ -656,10 +681,31 @@ void mainFunction() {
     lastDebounceTimeSecond = currentMillis;
   }
 }
+void clockdate()
 
+{
+  // Serial.println(rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/'));
+  // Serial.println(rtc.getDOWStr());
+  // Serial.println(rtc.getTimeStr());
+  // myDate = rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/');
+  // myTime = rtc.getTimeStr();
+
+  char *p = rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/');
+  size_t len = strlen(p);
+  for (size_t i = 0; i < len && i < BUFFER_DATE - 1; i++) {
+    myDate[i] = p[i];
+  }
+  myDate[len < BUFFER_DATE - 1 ? len : BUFFER_DATE - 1] = '\0';  // Ensure null-termination
+
+  p = rtc.getTimeStr();
+  len = strlen(p);
+  for (size_t i = 0; i < len && i < BUFFER_TIME - 1; i++) {
+    myTime[i] = p[i];
+  }
+  myTime[len < BUFFER_TIME - 1 ? len : BUFFER_TIME - 1] = '\0';  // Ensure null-termination
+}
 void setMenuShowErrorWithData(int index, String data) {
-  if (indexMenu != index && countIndexMenu == 0) 
-  {
+  if (indexMenu != index && countIndexMenu == 0) {
     oldIndexMenu = indexMenu;
   }
   indexMenu = index;
@@ -670,7 +716,7 @@ void setMenuShowErrorWithData(int index, String data) {
 void manageSerial() {
   if (startReceived && endReceived) {
     Serial.println(inputString);
-     parseData(inputString);
+    parseData(inputString);
     Serial.println("--------0----------");
     startReceived = false;
     endReceived = false;
@@ -684,9 +730,9 @@ void manageSerial1() {
   if (startReceived1 && endReceived1) {
     // Serial.println(inputString1,DEC);
     String data = "";
-    for(int i = 0; i < inputStringLength1; i++){
-      Serial.print(inputString1[i],HEX);
-      data += String(inputString1[i],BIN);
+    for (int i = 0; i < inputStringLength1; i++) {
+      Serial.print(inputString1[i], HEX);
+      data += String(inputString1[i], BIN);
     }
     Serial.println();
     Serial.print("Data: ");
@@ -695,11 +741,11 @@ void manageSerial1() {
     Serial3.print("$RFID:");
     Serial3.print(inputString1);
     Serial3.println("#");
-    if(!statusServer){
-      setMenuShowErrorWithData(3,"Server fail!");
+    if (!statusServer) {
+      setMenuShowErrorWithData(3, "Server fail!");
       alarmsTone = 10;
-    }else{
-      setMenuShowErrorWithData(3,inputString1);
+    } else {
+      setMenuShowErrorWithData(3, inputString1);
     }
     Serial.println("--------1----------");
     startReceived1 = false;
@@ -740,7 +786,7 @@ void parseData(String data) {
   if (data.indexOf("SERIAL:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "SERIAL:");
-    setMenuShowErrorWithData(2,serialData);
+    setMenuShowErrorWithData(2, serialData);
     if (isAllowMES == true) {
       Serial.println("Send to MES: " + data);
       Serial2.println("$" + data + "#");
@@ -755,24 +801,23 @@ void parseData(String data) {
     // Send data to MES
     countDownStatusMES = TIME_OUT_COMMUNICATION;
     // Response to master
-  }else if (data.indexOf("STATUS_SERVER:") != -1) {
+  } else if (data.indexOf("STATUS_SERVER:") != -1) {
     // Send data to MES
     countDownStatusServer = TIME_OUT_COMMUNICATION;
     // Response to master
-  }else if (data.indexOf("STATUS_ETH:") != -1) {
+  } else if (data.indexOf("STATUS_ETH:") != -1) {
     // Send data to MES
     countDownStatusETH = TIME_OUT_COMMUNICATION;
     // Response to master
-  }else if(data.indexOf("RFID_RES:") != 1)
-  {
+  } else if (data.indexOf("RFID_RES:") != 1) {
     String rfidData = extractData(data, "RFID_RES:");
-    if(rfidData == "OK"){
-      setMenuShowErrorWithData(4,"PASS");
+    if (rfidData == "OK") {
+      setMenuShowErrorWithData(4, "PASS");
       countLockJig = countLockJigMax;
       passToneCount += 1;
-      btnScwKeyOnEventChange(false); // Unlock jig
-    }else{
-      setMenuShowErrorWithData(4,"Not allow");
+      btnScwKeyOnEventChange(false);  // Unlock jig
+    } else {
+      setMenuShowErrorWithData(4, "Not allow");
       alarmsTone = 15;
     }
   }
@@ -1981,13 +2026,27 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2) {
   } else if (_selectMenu == 3) {
     line1 = " SYSTEM";
     line2 = ">SERVER: " + String(statusServer ? "ONLINE" : "OFFLINE");  //  STATUS: online or offline
-  }else if (_selectMenu == 4) {
-    line1 = ">UNO: "+String(statusETH?"TRUE":"FALSE");
-    line2 = " H-USB: "+String(statusMES?"TRUE":"FALSE");  //  STATUS: online or offline
-  }else if(_selectMenu == 5){
-    line1 = " UNO: "+String(statusETH?"TRUE":"FALSE");
-    line2 = ">H-USB: "+String(statusMES?"TRUE":"FALSE");  //  STATUS: online or offline
+  } else if (_selectMenu == 4) {
+    line1 = ">UNO: " + String(statusETH ? "TRUE" : "FALSE");
+    line2 = " H-USB: " + String(statusMES ? "TRUE" : "FALSE");  //  STATUS: online or offline
+  } else if (_selectMenu == 5) {
+    line1 = " UNO: " + String(statusETH ? "TRUE" : "FALSE");
+    line2 = ">H-USB: " + String(statusMES ? "TRUE" : "FALSE");  //  STATUS: online or offline
+  } else if (_selectMenu == 6) {
+    line1 = ">DATE: " + String(myDate);
+    line2 = " TIME: " + String(myTime);
+  } else if (_selectMenu == 7) {
+    line1 = " DATE: " + String(myDate);
+    line2 = ">TIME: " + String(myTime);
+  } else if (_selectMenu > 7) {
+    _selectMenu = 0;
+  } else if (_selectMenu < 0) {
+    _selectMenu = 7;
   }
+
+
+
+
   else if (_selectMenu > 5) {
     _selectMenu = 0;
   } else if (_selectMenu < 0) {
