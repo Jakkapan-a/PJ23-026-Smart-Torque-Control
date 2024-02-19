@@ -11,6 +11,7 @@ DS1302 rtc(2, 3, 4);  // RST, DAT, CLK
 
 #define DEBUG 1
 #define BUFFER_SIZE_DATA 255  // Buffer size = 255 bytes or 255 characters
+#define BASE_PATH "/data"
 
 // ------------------- Head Function -------------- //
 void LED_Controls(uint8_t);
@@ -77,6 +78,7 @@ TcPINOUT relayAram(RELAY_ARAM, false);
 TcPINOUT torque(TORQUE, false);
 
 #define LOCK_JIG_PIN 22
+void lockJigOnEventChange(bool state);
 TcPINOUT lockJig(LOCK_JIG_PIN, false);
 
 #define TICKER_UNLOCK_JIG 42
@@ -116,7 +118,7 @@ uint8_t CountUpCommunication = 0;
 #define TIME_UP_COMMUNICATION 14  // 14 seconds
 
 // 16/02/2024
-#define BUFFER_DATE 20 
+#define BUFFER_DATE 20
 #define BUFFER_TIME 10  // 00:00:00
 char myDate[BUFFER_DATE];
 char myTime[BUFFER_TIME];
@@ -211,6 +213,10 @@ enum STATUS_TEST {
   STOP
 };
 STATUS_TEST status_test = NO_TEST;
+// -------------------- SD CARD -------------------- //
+#define FILE_NAME_SIZE 11
+char fileName[FILE_NAME_SIZE];
+int fileIndex = 0;
 // -------------------- MODEL -------------------- //
 uint8_t indexSelectionModel = 0;
 // -------------------- MENU -------------------- //
@@ -273,19 +279,25 @@ const byte startChar1 = 0x02;
 const byte endChar1 = 0x03;
 // String inputString1 = "";
 char inputString1[BUFFER_SIZE_DATA];
+byte inputByte1[BUFFER_SIZE_DATA];
 int inputStringLength1 = 0;
 void serialEvent1() {
+
   while (Serial1.available()) {
     byte inChar = (byte)Serial1.read();
-    // Serial.print((char)inChar);
+    // Serial.print(inChar,HEX);
+    //  Serial.print(" ");
     if (inChar == startChar1) {
       startReceived1 = true;
       inputStringLength1 = 0;
     } else if (startReceived1 && inChar == endChar1) {
       endReceived1 = true;
-    } else if (startReceived1) {
+    } 
+    
+    if (startReceived1) {
       if (inputStringLength1 < BUFFER_SIZE_DATA - 1) {
         inputString1[inputStringLength1++] = inChar;
+        inputByte1[inputStringLength1] = inChar;
       } else {
         startReceived1 = false;
         endReceived1 = false;
@@ -293,7 +305,6 @@ void serialEvent1() {
       }
     }
   }
-  //  Serial.println("");
 }
 // -------------------- SERIAL 2 -------------------- //
 bool startReceived2 = false;
@@ -360,22 +371,7 @@ void setup() {
   lcd.begin();
   lcd.clear();
 
-  String dot = ".";
-  Serial.println("Initializing SD");
-  updateLCD("Initializing SD", dot.c_str());
-  delay(100);
-
-  while (!SD.begin(SD_CS)) {
-    for (int i = 0; i < 15; i++) {
-      updateLCD("Initial SD Card", dot.c_str());
-      dot += ".";
-      if (dot.length() > 15) {
-        dot = ".";
-      }
-      delay(300);
-    }
-    delay(100);
-  }
+  checkSDCard();
   updateLCD("SD Card", "Completed");
 
   tickerUnlockJig.off();
@@ -396,6 +392,7 @@ void setup() {
   btnScwKey.OnEventChange(btnScwKeyOnEventChange);
   btnCensorOnSt.OnEventChange(btnCensorOnStOnEventChange);
 
+  lockJig.setCallback(lockJigOnEventChange);
   indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial
 
   indexSelectionModel = readInt8InEEPROM(0);
@@ -438,6 +435,8 @@ void setup() {
   // rtc.setTime(19, 53,00);
   // rtc.setDate(16, 2, 2024);
   // rtc.writeProtect(true);
+
+  generateFileName();
 }
 
 void loop() {
@@ -472,11 +471,16 @@ void mainFunction() {
     timeComplete = millis() - timeStart;
     countScrew++;
 
+    String data = "TEST="+String(countScrew) + "/" + String(countScrewMax) + "PCS," + String(timeComplete) + "ms";
+    data += ",STD:" + String(stdMin) + "-" + String(stdMax) + "ms";
+    data += "RESULT:" + String(timeComplete >= stdMin && timeComplete <= stdMax ? "PASS" : "NG");
+    
+    // Save data to SD Card
+    appendFile(fileName, data.c_str());
+    
     Serial.println("Time complete: " + String(timeComplete));
     // Check time is inside range min and max
     if (timeComplete >= stdMin && timeComplete <= stdMax) {
-      // PASS
-
       // Check count screw
       if (countScrew >= countScrewMax) {
         status_test = PASS;
@@ -512,6 +516,10 @@ void mainFunction() {
     tickerUnlockJig.on();
     pressUnlockJigCountDown = 0;
     pressUnlockJig = 0;
+    String data = "UNLOCK_BY=SCW_KEY";
+
+    // Save data to SD Card
+    appendFile(fileName, data.c_str());
   }
   unsigned long currentMillis = millis();
   // -------------------- Debounce 10 ms ------------------ //
@@ -545,7 +553,7 @@ void mainFunction() {
 
   // -------------------- Debounce 100 ms ------------------ //
   if (currentMillis - lastDebounceTimeMillis > 100) {
- 
+
     if (indexMenu == 0) {
       // Home display
       String line1 = "MODEL : " + model;
@@ -610,11 +618,12 @@ void mainFunction() {
 
   // -------------------- Debounce 1000 ms ------------------ //
   if (currentMillis - lastDebounceTimeSecond > 1000) {
-   // uint32_t _currentMillis = millis();
-      clockdate();
-      // uint32_t _callTime = millis() - _currentMillis;
-      // 
-      // Serial.println("Time: " + String(_callTime) + "ms");
+    // uint32_t _currentMillis = millis();
+    clockDate();
+    checkSDCard();
+    // uint32_t _callTime = millis() - _currentMillis;
+    //
+    // Serial.println("Time: " + String(_callTime) + "ms");
 
 
     CountUpCommunication++;
@@ -657,7 +666,7 @@ void mainFunction() {
         statusMES = true;
       }
     }
-  
+
     // ----------- LOCK JIG ------------ //
     if (countLockJig > 0) {
       countLockJig--;
@@ -680,9 +689,24 @@ void mainFunction() {
     lastDebounceTimeSecond = currentMillis;
   }
 }
-void clockdate()
 
-{
+void checkSDCard() {
+  // loop if SD card is not present
+  String dot = ".";
+  while (!SD.begin(SD_CS)) {
+    // Lcd print
+    for (int i = 0; i < 15; i++) {
+      updateLCD("Initial SD Card", dot.c_str());
+      dot += ".";
+      if (dot.length() > 15) {
+        dot = ".";
+      }
+      delay(300);
+    }
+  }
+}
+
+void clockDate() {
   // Serial.println(rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/'));
   // Serial.println(rtc.getDOWStr());
   // Serial.println(rtc.getTimeStr());
@@ -703,6 +727,7 @@ void clockdate()
   }
   myTime[len < BUFFER_TIME - 1 ? len : BUFFER_TIME - 1] = '\0';  // Ensure null-termination
 }
+
 void setMenuShowErrorWithData(int index, String data) {
   if (indexMenu != index && countIndexMenu == 0) {
     oldIndexMenu = indexMenu;
@@ -728,14 +753,11 @@ void manageSerial() {
 void manageSerial1() {
   if (startReceived1 && endReceived1) {
     // Serial.println(inputString1,DEC);
-    String data = "";
     for (int i = 0; i < inputStringLength1; i++) {
-      Serial.print(inputString1[i], HEX);
-      data += String(inputString1[i], BIN);
+      Serial.print(inputByte1[i],HEX);
+      Serial.print(" ");
     }
-    Serial.println();
-    Serial.print("Data: ");
-    Serial.println(data);
+https://support.lenovo.com/qrcode?sn=LR0ETLGZ&mtm=82A200DETA
 
     Serial3.print("$RFID:");
     Serial3.print(inputString1);
@@ -752,6 +774,8 @@ void manageSerial1() {
     memset(inputString1, 0, BUFFER_SIZE_DATA);
     inputStringLength1 = 0;
     passToneCount += 1;
+    // Clear inputByte1 buffer
+    memset(inputByte1, 0, BUFFER_SIZE_DATA);
   }
 }
 
@@ -811,7 +835,6 @@ void parseData(String data) {
     // Response to master
   } else if (data.indexOf("RFID_RES:") != -1) {
     String rfidData = extractData(data, "RFID_RES:");
-    
     if (rfidData == "OK") {
       setMenuShowErrorWithData(4, "PASS");
       countLockJig = countLockJigMax;
@@ -929,6 +952,9 @@ void btnStartOnEventChange(bool state) {
     Serial.print("Start: ");
     Serial.println(timeStart);
     LED_Controls(3);
+    // String data = "START=" + String(timeStart);
+    // Save data to SD Card
+    // appendFile(fileName, data.c_str());
   } else if (status_test == TESTING) {
     Serial.println("--------LED OFF STD ----------");
     LED_Controls(0);
@@ -941,6 +967,9 @@ void btnStopOnEventChange(bool state) {
   stateStop = !state;
   if (stateStop) {
     Serial.println("Stop");
+    // String data = "STOP=" + String(millis());
+    // Save data to SD Card
+    // appendFile(fileName, data.c_str());
   } else {
   }
 }
@@ -963,6 +992,28 @@ void btnCensorOnStOnEventChange(bool state) {
     countLockJig = countLockJigMax;
     lastDebounceTimeSecond = millis();
     status_test = TESTING;
+
+    // GenerateFileName
+    generateFileName();
+
+    Serial.print("File name: ");
+    Serial.println(fileName);
+
+    // Serial.print("Decode file name: ");
+    // Serial.println(decodeFileName(fileName));
+
+    String data = "MODEL=" + model;
+    data += "\nID=" + id;
+    data += "\nIP=" + String(IP[0]) + "." + String(IP[1]) + "." + String(IP[2]) + "." + String(IP[3]);
+    // appendFile
+    appendFile(fileName,data.c_str());
+
+    data = "DATE_TIME=" +String(myDate) + " " + String(myTime);
+    data += "\nSTD_MIN=" + stdMin;
+    data += "\nSTD_MAX=" + stdMin;
+    data += "\nCOUNT=" + String(countScrewMax);
+    
+    appendFile(fileName,data.c_str());
   }
   // MES OFF
   isAllowMES = false;
@@ -1074,14 +1125,10 @@ void getIP(int address, uint8_t (&ip)[4]) {
 
 
 void getMac(int address, uint8_t (&mac)[6]) {
-  // uint8_t mac[6];
   for (int i = 0; i < 6; i++) {
     mac[i] = readInt8InEEPROM(address + i);
   }
-  // return mac;
 }
-
-
 
 // -------------------- BUTTON EVENT -------------------- //
 void btnEscOnEventChange(bool state) {
@@ -2528,4 +2575,121 @@ void indexMacCal(uint8_t mac[], uint8_t index_input, uint8_t &index_output, Stri
       index_output = 4;
       break;
   }
+}
+
+// -------------------- END MENU -------------------- //
+
+// -------------------- Manage SD card data -------------------- //
+/*
+  1. Read data from SD card
+  2. Write data to SD card
+  3. Append data to SD card
+  4. Delete data from SD card
+*/
+
+// 10 - 60 convert to A - Z
+const char _letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+void generateFileName() {
+  int indexName = 0;
+  // Clear file
+  memset(fileName, 0, FILE_NAME_SIZE);
+  // fileName[indexName++] = 'T';
+  // Get date
+  int n =0; // xx/xx/xxxx
+  // Year last 2 digits
+  int digitYear = 0;
+  String strD ="";
+  int b = 0;
+  for (int i = 0; i < strlen(myDate); i++) {
+    if(myDate[i] == '/'){
+      b++;
+    }else if(b == 2 && digitYear < 2){
+      digitYear++;
+      continue;
+    }
+
+    if(myDate[i] != '/'){
+      n++;
+      strD += myDate[i];
+      if(n == 2){
+        int num = strD.toInt();
+        if(num < 10){
+          fileName[indexName++] = char(num + 48);
+        }else{
+          fileName[indexName++] = _letters[num - 10];
+        }
+        strD = "";
+        n = 0;
+      } 
+    }
+  }
+  strD = "";
+  // Get time
+  for (int i = 0; i < strlen(myTime); i++) {
+    if (myTime[i] != ':') {
+      n++;
+      strD += myTime[i];
+      if(n == 2){
+        int num = strD.toInt();
+        if(num < 10){
+          fileName[indexName++] = char(num + 48);
+        }else{
+          fileName[indexName++] = _letters[num - 10];
+        }
+        strD = "";
+        n = 0;
+      }
+    }
+  }
+  // Add file extension
+  strcat(fileName, ".txt");
+  fileName[strlen(fileName)] = '\0';   // terminate the string
+
+  Serial.print("->");
+  Serial.print(fileName);
+  Serial.println("");
+}
+
+String decodeFileName(const char *filename) {
+  String str = "";
+  for (int i = 0; i < strlen(filename); i++) {
+    if (filename[i] >= 48 && filename[i] <= 57) {
+      str += filename[i];
+    } else if (filename[i] >= 65 && filename[i] <= 90) {
+      str += String(filename[i] - 55);
+    } else if (filename[i] >= 97 && filename[i] <= 122) {
+      str += String(filename[i] - 61);
+    }
+  }
+  return str;
+}
+
+void readSDCard(const char *filename) {
+  // Open file for reading data and BASE_PATH
+  File file = SD.open(filename);
+  if (file) {
+    Serial.println("Read from file:");
+    while (file.available()) {
+      Serial.write(file.read());
+    }
+    file.close();
+  } else {
+    Serial.println("Failed to open file for reading");
+  }
+}
+
+void appendFile(const char *filename, const char *message) {
+  // Open file for appending data
+  File file = SD.open(filename, FILE_WRITE);
+  if (file) {
+    file.println(message);
+    file.close();
+  } else {
+    Serial.println("Failed to open file for appending");
+  }
+}
+
+void lockJigOnEventChange(bool state) {
+  String message = state ? "JIG=LOCK" : "JIG=UNLOCK";
+  appendFile(fileName, message.c_str());
 }
