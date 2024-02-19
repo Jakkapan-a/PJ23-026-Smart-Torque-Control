@@ -78,27 +78,30 @@ void setup() {
   String topicPath = "MC/" + MQTT_TOPIC_ID + "/" + MQTT_TOPIC_STATUS;
 
   // Attempt to connect to the MQTT broker with the given username and password
-  if (client.connect("arduinoClient", MQTT_USER.c_str(), MQTT_PASS.c_str())) {
+  if (client.connect("arduinoClient", MQTT_USER.c_str(), MQTT_PASS.c_str(), topicPath.c_str(), 0, 0, "offline"))
+  {
     Serial.println("Connected to MQTT Broker!");
-    // Once connected, publish an announcement...
-    client.publish(MQTT_TOPIC.c_str(), "hello world");
-    // client.publish("TEST", "hello world");
-    // ... and resubscribe
-    client.subscribe(MQTT_TOPIC_SUB.c_str());
-  } else {
+    // online
+    client.publish(topicPath.c_str(), "online");
+
+    String topicPathSub = "MS/" + MQTT_TOPIC_ID;
+    client.subscribe(topicPathSub.c_str());  } else {
     Serial.println("MQTT connection failed. Check MQTT broker availability and credentials.");
   }
 }
 
 void loop() {
 if (!client.connected()) {
-  Serial.println("Connect to MQTT Fail");
+  Serial.println("MQTT connection lost. Attempting to reconnect...");
     // Reconnect if connection is lost
-    if (client.connect("arduinoClient", MQTT_USER.c_str(), MQTT_PASS.c_str())) {
+    String topicPath = "MC/" + MQTT_TOPIC_ID + "/" + MQTT_TOPIC_STATUS;
+    if (client.connect("arduinoClient", MQTT_USER.c_str(), MQTT_PASS.c_str(), topicPath.c_str(), 0, 0, "offline")) 
+    {
       // Resubscribe to the topic once reconnected
       Serial.println("Reconnected to MQTT Broker!");
-      client.subscribe(MQTT_TOPIC_SUB.c_str());
+      String topicPathSub = "MS/" + MQTT_TOPIC_ID;
+      client.subscribe(topicPathSub.c_str());
     }
   }
-  client.loop(); // This should be called regularly to allow the client to process incoming messages and maintain its connection to the server.
+  client.loop();
 }
