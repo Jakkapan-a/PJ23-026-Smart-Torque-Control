@@ -117,6 +117,7 @@ uint8_t countDownStatusMES = 0;     // Sec 10
 uint8_t CountUpCommunication = 0;
 #define TIME_UP_COMMUNICATION 14  // 14 seconds
 
+uint8_t sendInfo = 0;
 // 16/02/2024
 #define BUFFER_DATE 20
 #define BUFFER_TIME 10  // 00:00:00
@@ -153,11 +154,11 @@ int indexID = 0;       // Index edit ID
 uint8_t lengthID = 5;  // 5 Digit
 
 
-uint8_t IP[] = { 10, 192, 13, 180 };
+uint8_t IP[] = { 10, 192, 13, 172 };
 uint8_t GATEWAY[] = { 10, 192, 13, 254 };
 uint8_t SUBNET[] = { 255, 255, 255, 0 };
 uint8_t MAC[] = { 0x0A, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-uint8_t DNS[] = { 10, 192, 10, 5 };
+uint8_t DNS[] = { 10, 192, 13, 172 };
 
 uint8_t indexIP = 0;  // Index edit IP Address, mac address, gateway, subnet, dns
 
@@ -634,7 +635,7 @@ void mainFunction() {
       Serial2.println("$STATUS:ASK#");
     } else if (CountUpCommunication == 2) {
       Serial.println("Call status ETH");
-      Serial3.println("$STATUS:ASK#");
+      Serial3.println("$STATUS_ETH:ASK#");
     } else if (CountUpCommunication == 3) {
       Serial.println("Call status SERVER");
       Serial3.println("$STATUS_SERVER:ASK#");
@@ -757,8 +758,6 @@ void manageSerial1() {
       Serial.print(inputByte1[i],HEX);
       Serial.print(" ");
     }
-https://support.lenovo.com/qrcode?sn=LR0ETLGZ&mtm=82A200DETA
-
     Serial3.print("$RFID:");
     Serial3.print(inputString1);
     Serial3.println("#");
@@ -794,7 +793,7 @@ void manageSerial2() {
 void manageSerial3() {
   if (startReceived3 && endReceived3) {
     Serial.println(inputString3);
-    parseData(inputString3);
+    parseData(inputString3); // ETH 
     Serial.println("--------3----------");
     startReceived3 = false;
     endReceived3 = false;
@@ -827,11 +826,24 @@ void parseData(String data) {
     // Response to master
   } else if (data.indexOf("STATUS_SERVER:") != -1) {
     // Send data to MES
-    countDownStatusServer = TIME_OUT_COMMUNICATION;
+    String extract = extractData(data, "STATUS_SERVER:");
+    if(extract == "OK"){
+      statusServer = true;
+      countDownStatusServer = TIME_OUT_COMMUNICATION;
+    }else{
+      statusServer = false;
+    }
     // Response to master
   } else if (data.indexOf("STATUS_ETH:") != -1) {
     // Send data to MES
-    countDownStatusETH = TIME_OUT_COMMUNICATION;
+    // countDownStatusETH = TIME_OUT_COMMUNICATION;
+     String extract = extractData(data, "STATUS_ETH:");
+    if(extract == "OK"){  
+      statusETH = true;
+      countDownStatusETH = TIME_OUT_COMMUNICATION;
+    }else{
+      statusETH = false;
+    }
     // Response to master
   } else if (data.indexOf("RFID_RES:") != -1) {
     String rfidData = extractData(data, "RFID_RES:");
@@ -846,6 +858,94 @@ void parseData(String data) {
     }
   }
 }
+void manageETH(String data){
+//   if(sendInfo == 1)
+//  {
+//    data = "ETH_ID:"+id;
+//   Serial3.println(data);
+//  }
+//  else if(sendInfo == 2)
+//  {
+//    data = "ETH_IP:"+String(IP[0])+","+String(IP[1])+","+String(IP[2])+","+String(IP[3]);
+//   Serial3.println(data);
+//  }
+//  else if(sendInfo == 3)
+//  {
+//    data = "ETH_GATEWAY:"+String(GATEWAY[0])+","+String(GATEWAY[1])+","+String(GATEWAY[2])+","+String(GATEWAY[3]);
+//   Serial3.println(data);
+//  }
+//  else if(sendInfo == 4)
+//  {
+//    data = "ETH_SUBNET:"+String(SUBNET[0])+","+String(SUBNET[1])+","+String(SUBNET[2])+","+String(SUBNET[3]);
+//  }else if(sendInfo == 5)
+//  {
+//   data = "ETH_MAC:"+String(MAC[0])+","+String(MAC[1])+","+String(MAC[2])+","+String(MAC[3])+","+String(MAC[4])+","+String(MAC[5]);
+//  }else if(sendInfo == 6)
+//  {
+//   data = "ETH_DNS:"+String(DNS[0])+","+String(DNS[1])+","+String(DNS[2])+","+String(DNS[3]);
+//  }else if(sendInfo == 7)
+//  {
+//   data = "ETH_MQTT_IP:"+String(IP_SERVER[0])+","+String(IP_SERVER[1])+","+String(IP_SERVER[2])+","+String(IP_SERVER[3]);
+//  }else if(sendInfo == 8)
+//  {
+//   data = "ETH_MQTT_PORT:"+String(SERVER_PORT_MQTT);
+//  }else if(sendInfo == 9)
+//  {
+//   data = "ETH_CONNECT:true";
+//  }
+
+  if (data.indexOf("ETH_") != -1) {
+    return;
+  }
+
+ if (data.indexOf("ETH_ID:") != -1) {
+    String extract = extractData(data, "ETH_ID:");
+    if(extract == "OK"){
+      sendInfo = 2; // NEXT TO ETH_IP
+    }
+ }else if(data.indexOf("ETH_IP:") != -1){
+    String extract = extractData(data, "ETH_ID:");
+    if(extract == "OK"){
+      sendInfo = 3; // NEXT TO ETH_GATEWAY
+    }
+ }else if(data.indexOf("ETH_GATEWAY:") != -1){
+ String extract = extractData(data, "ETH_GATEWAY:");
+    if(extract == "OK"){
+      sendInfo = 4; // NEXT TO ETH_SUBNET
+    }
+ }else if(data.indexOf("ETH_SUBNET:") != -1){
+    String extract = extractData(data, "ETH_SUBNET:");
+    if(extract == "OK"){
+      sendInfo = 5; // NEXT TO ETH_MAC
+    }
+ }else if(data.indexOf("ETH_MAC:") != -1){
+    String extract = extractData(data, "ETH_MAC:");
+    if(extract == "OK"){
+      sendInfo = 6; // NEXT TO ETH_DNS
+    }
+ }else if(data.indexOf("ETH_DNS:") != -1){
+    String extract = extractData(data, "ETH_DNS:");
+    if(extract == "OK"){
+      sendInfo = 7; // NEXT TO ETH_MQTT_IP
+    }
+ }else if(data.indexOf("ETH_MQTT_IP:") != -1){
+    String extract = extractData(data, "ETH_MQTT_IP:");
+    if(extract == "OK"){
+      sendInfo = 8; // NEXT TO ETH_MQTT_IP
+    }
+ }else if(data.indexOf("ETH_MQTT_PORT:") != -1){
+    String extract = extractData(data, "ETH_MQTT_PORT:");
+    if(extract == "OK"){
+      sendInfo = 9; // NEXT TO ETH_MQTT_IP
+    }
+ }else if(data.indexOf("ETH_CONNECT:") != -1){
+    String extract = extractData(data, "ETH_CONNECT:");
+    if(extract == "OK"){
+      // sendInfo = 4; // NEXT TO CONNECTED
+    }
+ }
+}
+
 
 String extractData(String data, String key) {
   int keyIndex = data.indexOf(key);  // Find the position of the key
@@ -2075,10 +2175,10 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2) {
     line1 = " SYSTEM";
     line2 = ">SERVER: " + String(statusServer ? "ONLINE" : "OFFLINE");  //  STATUS: online or offline
   } else if (_selectMenu == 4) {
-    line1 = ">UNO: " + String(statusETH ? "TRUE" : "FALSE");
+    line1 = ">ETH: " + String(statusETH ? "TRUE" : "FALSE");
     line2 = " H-USB: " + String(statusMES ? "TRUE" : "FALSE");  //  STATUS: online or offline
   } else if (_selectMenu == 5) {
-    line1 = " UNO: " + String(statusETH ? "TRUE" : "FALSE");
+    line1 = " ETH: " + String(statusETH ? "TRUE" : "FALSE");
     line2 = ">H-USB: " + String(statusMES ? "TRUE" : "FALSE");  //  STATUS: online or offline
   } else if (_selectMenu == 6) {
     line1 = ">DATE:" + String(myDate);
@@ -2692,4 +2792,69 @@ void appendFile(const char *filename, const char *message) {
 void lockJigOnEventChange(bool state) {
   String message = state ? "JIG=LOCK" : "JIG=UNLOCK";
   appendFile(fileName, message.c_str());
+}
+
+
+void sendInfoConnectMQTT()
+{
+  if(sendInfo == 0){
+    return;
+  }
+  /*
+  1. ID
+  2. IP 
+  3. GATEWAY
+  4. SUBNET
+  5. MAC
+  6. DNS 
+  7. MQTT SERVER
+  8. MQTT PORT
+
+
+  id = getID(ID_Address);
+  getIP(IP_Address, IP);
+  getIP(GATEWAY_Address, GATEWAY);
+  getIP(SUBNET_Address, SUBNET);
+  getMac(MAC_Address, MAC);
+  getIP(DNS_Address, DNS);
+  getIP(IP_SERVER_Address, IP_SERVER);
+  SERVER_PORT_MQTT = readInt16CInEEPROM(SERVER_PORT_MQTT_Address);
+  */
+ String data = "";
+ if(sendInfo == 1)
+ {
+   data = "ETH_ID:"+id;
+  Serial3.println(data);
+ }
+ else if(sendInfo == 2)
+ {
+   data = "ETH_IP:"+String(IP[0])+","+String(IP[1])+","+String(IP[2])+","+String(IP[3]);
+  Serial3.println(data);
+ }
+ else if(sendInfo == 3)
+ {
+   data = "ETH_GATEWAY:"+String(GATEWAY[0])+","+String(GATEWAY[1])+","+String(GATEWAY[2])+","+String(GATEWAY[3]);
+  Serial3.println(data);
+ }
+ else if(sendInfo == 4)
+ {
+   data = "ETH_SUBNET:"+String(SUBNET[0])+","+String(SUBNET[1])+","+String(SUBNET[2])+","+String(SUBNET[3]);
+ }else if(sendInfo == 5)
+ {
+  data = "ETH_MAC:"+String(MAC[0])+","+String(MAC[1])+","+String(MAC[2])+","+String(MAC[3])+","+String(MAC[4])+","+String(MAC[5]);
+ }else if(sendInfo == 6)
+ {
+  data = "ETH_DNS:"+String(DNS[0])+","+String(DNS[1])+","+String(DNS[2])+","+String(DNS[3]);
+ }else if(sendInfo == 7)
+ {
+  data = "ETH_MQTT_IP:"+String(IP_SERVER[0])+","+String(IP_SERVER[1])+","+String(IP_SERVER[2])+","+String(IP_SERVER[3]);
+ }else if(sendInfo == 8)
+ {
+  data = "ETH_MQTT_PORT:"+String(SERVER_PORT_MQTT);
+ }else if(sendInfo == 9)
+ {
+  data = "ETH_CONNECT:true";
+ }
+  Serial3.println("$"+data+"#");
+  sendInfo = 0;
 }
