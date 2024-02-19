@@ -99,6 +99,7 @@ if (!client.connected()) {
     {
       // Resubscribe to the topic once reconnected
       Serial.println("Reconnected to MQTT Broker!");
+      client.publish(topicPath.c_str(), "online");
       String topicPathSub = "MS/" + MQTT_TOPIC_ID;
       client.subscribe(topicPathSub.c_str());
     }

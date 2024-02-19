@@ -83,7 +83,8 @@ void serialEvent1() {
 
 void setup() {
   Serial.begin(115200);
-
+  Serial1.begin(115200);
+  
   Ethernet.begin(mac, ip, primaryDNS, gateway, subnet);
   // Not set IP
   // Ethernet.begin(mac);
