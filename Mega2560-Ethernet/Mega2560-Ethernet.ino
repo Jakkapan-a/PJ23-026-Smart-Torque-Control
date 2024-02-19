@@ -117,7 +117,9 @@ uint8_t countDownStatusMES = 0;     // Sec 10
 uint8_t CountUpCommunication = 0;
 #define TIME_UP_COMMUNICATION 14  // 14 seconds
 
+boolean setupETH = true;
 uint8_t sendInfo = 0;
+uint8_t oldSendInfo = 1;
 // 16/02/2024
 #define BUFFER_DATE 20
 #define BUFFER_TIME 10  // 00:00:00
@@ -546,7 +548,8 @@ void mainFunction() {
       countPressDown = 0;
     }
 
-
+    sendInfoConnectMQTT();
+    
     lastDebounceTime = currentMillis;
   } else if (currentMillis < lastDebounceTime) {  // Overflows
     lastDebounceTime = currentMillis;
@@ -595,8 +598,6 @@ void mainFunction() {
       updateLCD(line1.c_str(), line2.c_str());
     }
 
-
-
     if (countIndexMenu > 0) {
       countIndexMenu--;
       if (countIndexMenu == 0) {
@@ -619,14 +620,9 @@ void mainFunction() {
 
   // -------------------- Debounce 1000 ms ------------------ //
   if (currentMillis - lastDebounceTimeSecond > 1000) {
-    // uint32_t _currentMillis = millis();
     clockDate();
     checkSDCard();
-    // uint32_t _callTime = millis() - _currentMillis;
-    //
-    // Serial.println("Time: " + String(_callTime) + "ms");
-
-
+    reSetupETHInfo();
     CountUpCommunication++;
     if (CountUpCommunication > TIME_UP_COMMUNICATION) {
       CountUpCommunication = 0;
@@ -691,6 +687,16 @@ void mainFunction() {
   }
 }
 
+void reSetupETHInfo()
+{
+  if(!setupETH && oldSendInfo == 0 ){
+    return;
+  }
+  // Serial.println("Setup ETH: " + String(setupETH));
+  // Resend info
+  sendInfo = oldSendInfo;
+  // sendInfoConnectMQTT();
+}
 void checkSDCard() {
   // loop if SD card is not present
   String dot = ".";
@@ -857,6 +863,8 @@ void parseData(String data) {
       alarmsTone = 15;
     }
   }
+
+  manageETH(data);
 }
 void manageETH(String data){
 //   if(sendInfo == 1)
@@ -894,54 +902,66 @@ void manageETH(String data){
 //   data = "ETH_CONNECT:true";
 //  }
 
-  if (data.indexOf("ETH_") != -1) {
+  if (data.indexOf("ETH_") == -1) {
     return;
   }
+
+  Serial.println("Received ETH data: " + data);
 
  if (data.indexOf("ETH_ID:") != -1) {
     String extract = extractData(data, "ETH_ID:");
     if(extract == "OK"){
       sendInfo = 2; // NEXT TO ETH_IP
+      oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_IP:") != -1){
-    String extract = extractData(data, "ETH_ID:");
+    String extract = extractData(data, "ETH_IP:");
     if(extract == "OK"){
       sendInfo = 3; // NEXT TO ETH_GATEWAY
+       oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_GATEWAY:") != -1){
  String extract = extractData(data, "ETH_GATEWAY:");
     if(extract == "OK"){
       sendInfo = 4; // NEXT TO ETH_SUBNET
+       oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_SUBNET:") != -1){
     String extract = extractData(data, "ETH_SUBNET:");
     if(extract == "OK"){
       sendInfo = 5; // NEXT TO ETH_MAC
+       oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_MAC:") != -1){
     String extract = extractData(data, "ETH_MAC:");
     if(extract == "OK"){
       sendInfo = 6; // NEXT TO ETH_DNS
+       oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_DNS:") != -1){
     String extract = extractData(data, "ETH_DNS:");
     if(extract == "OK"){
       sendInfo = 7; // NEXT TO ETH_MQTT_IP
+       oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_MQTT_IP:") != -1){
     String extract = extractData(data, "ETH_MQTT_IP:");
     if(extract == "OK"){
       sendInfo = 8; // NEXT TO ETH_MQTT_IP
+       oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_MQTT_PORT:") != -1){
     String extract = extractData(data, "ETH_MQTT_PORT:");
     if(extract == "OK"){
       sendInfo = 9; // NEXT TO ETH_MQTT_IP
+       oldSendInfo = 0;
     }
  }else if(data.indexOf("ETH_CONNECT:") != -1){
     String extract = extractData(data, "ETH_CONNECT:");
     if(extract == "OK"){
       // sendInfo = 4; // NEXT TO CONNECTED
+       oldSendInfo = 0;
+       setupETH = false; // Stop send info
     }
  }
 }
@@ -2825,6 +2845,7 @@ void sendInfoConnectMQTT()
  {
    data = "ETH_ID:"+id;
   Serial3.println(data);
+ 
  }
  else if(sendInfo == 2)
  {
@@ -2853,8 +2874,10 @@ void sendInfoConnectMQTT()
   data = "ETH_MQTT_PORT:"+String(SERVER_PORT_MQTT);
  }else if(sendInfo == 9)
  {
-  data = "ETH_CONNECT:true";
+  data = "ETH_CONNECT:OK";
  }
   Serial3.println("$"+data+"#");
+  Serial.println(data);
+  oldSendInfo = sendInfo;
   sendInfo = 0;
 }
