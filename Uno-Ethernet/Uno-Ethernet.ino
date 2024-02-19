@@ -13,8 +13,8 @@ SCK -> 13
 RST -> 8
 */
 
-byte mac[] = { 0x01, 0x02, 0xFF, 0xFA, 0x3A, 0x31 };
-IPAddress ip(10, 192, 13, 173);          // IP of Arduino
+byte mac[] = { 0xEB, 0x02, 0xFF, 0xFA, 0x3A, 0x33 };
+IPAddress ip(10, 192, 13, 180);          // IP of Arduino
 IPAddress gateway(10, 192, 13, 254);     // Gateway
 IPAddress subnet(255, 255, 255, 0);      // Subnet mask
 IPAddress primaryDNS(10, 192, 10, 5);    // DNS server
@@ -29,14 +29,14 @@ const String MQTT_PASS = "pssw@automation";
 const String MQTT_TOPIC = "MC";
 const String MQTT_TOPIC_ID = "PJ23-001-1";
 const String MQTT_TOPIC_STATUS = "status";
-const String MQTT_TOPIC_SUB = "receive";
+const String MQTT_TOPIC_SUB = "MS";
 
 // Callback function header
 void MQTT_Callback(char *topic, byte *payload, unsigned int length);
 
 EthernetClient ethClient;
-PubSubClient client(ethClient);
-// PubSubClient client(server, 1883, MQTT_Callback, ethClient);
+// PubSubClient client(ethClient);
+PubSubClient client(server, MQTT_PORT, MQTT_Callback, ethClient);
 
 // -------------------- I2c -------------------- //
 boolean startReceivedI2c = false;
@@ -46,28 +46,37 @@ const char startCharI2c = '$';
 const char endCharI2c = '#';
 String inputStringI2c = "";
 
+#define BUFFER_SIZE_CHAR 255 // Buffer size = 255 bytes or 255 characters
+// -------------------- SERIAL 1 -------------------- //
+boolean startReceived1 = false;
+boolean endReceived1 = false;
 
-
-// -------------------- SERIAL  -------------------- //
-boolean startReceived = false;
-boolean endReceived = false;
-
-const char startChar = '$';
-const char endChar = '#';
-String inputString = "";
-
+const char startChar1 = '$';
+const char endChar1 = '#';
+// String inputString1 = "";
+char receivedData1[BUFFER_SIZE_CHAR];
+int receivedDataLength1 = 0;
 void serialEvent1() {
   while (Serial1.available()) {
     byte inChar = (byte)Serial1.read();
-    if (inChar == startChar) {
-      startReceived = true;
-      inputString = "";
+    if (inChar == startChar1) {
+      startReceived1 = true;
+      // inputString = "";
+      memset(receivedData1, 0, BUFFER_SIZE_CHAR);
+      receivedDataLength1 = 0;
       // inputString += (char)inChar;
-    } else if (startReceived && inChar == endChar) {
+    } else if (startReceived1 && inChar == endChar1) {
       // inputString += (char)inChar;
-      endReceived = true;
-    } else if (startReceived) {
-      inputString += (char)inChar;
+      endReceived1 = true;
+    } else if (startReceived1) {
+      // inputString += (char)inChar;
+      if(receivedDataLength1 < BUFFER_SIZE_CHAR - 1){
+        receivedData1[receivedDataLength1++] = inChar;
+      }else{
+        startReceived1 = false;
+        endReceived1 = false;
+        receivedDataLength1 = 0;
+      }
     }
   }
 }
@@ -78,6 +87,7 @@ void setup() {
   Ethernet.begin(mac, ip, primaryDNS, gateway, subnet);
   // Not set IP
   // Ethernet.begin(mac);
+  delay(1000); // รอการเชื่อมต่อเครือข่าย
 
   while (Ethernet.hardwareStatus() != EthernetENC28J60) {
     Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
@@ -105,7 +115,7 @@ void setup() {
   Serial.print(Ethernet.linkStatus() == LinkON ? "Connected" : "Disconnected");
   Serial.println();
   
-  client.setServer(server, 1883);
+  // client.setServer(server, MQTT_PORT);
   client.setKeepAlive(60); // ตั้งค่าเวลา keepalive เป็น 60 วินาที
   client.setBufferSize(MQTT_MAX_PACKET_SIZE);
   reconnect();
@@ -116,7 +126,7 @@ void setup() {
 }
 
 void loop() {
-  manageSerial();
+  manageSerial1();
   manageI2c();
   if (!client.connected()) {
     reconnect();
@@ -153,26 +163,27 @@ void reconnect() {
       Serial.print(Ethernet.linkStatus() == LinkON ? "Connected" : "Disconnected");
       Serial.println();
 
-      // Change DNS
+//       Change DNS
 //       if(toggleDNS){
 //         Ethernet.begin(mac, ip, primaryDNS, gateway, subnet);
 //       }else{
 //         Ethernet.begin(mac, ip, secondaryDNS, gateway, subnet);
 //       }
-// toggleDNS = !toggleDNS;
+//      toggleDNS = !toggleDNS;
+
       if(Ethernet.linkStatus() == LinkOFF){
         return;
       }
-     client.setServer(server, 1883);
+    //  client.setServer(server, MQTT_PORT);
      Serial.print("MQTT server: ");
-      Serial.println(server);
+     Serial.println(client.state());
      Serial.println("Attempting MQTT connection...");
     if (client.connect(MQTT_TOPIC_ID.c_str(), MQTT_USER.c_str(), MQTT_PASS.c_str(), topicPath.c_str(), 0, true, "offline")) {
       Serial.println("Connected to MQTT server");
       client.publish(topicPath.c_str(), "online");
       Serial.println("Publish status online");
 
-      topicPath = "MC/" + MQTT_TOPIC_ID + "/" + MQTT_TOPIC_SUB;
+      topicPath = "MS/" + MQTT_TOPIC_ID;
       Serial.print("Subscribe to: ");
       Serial.println(topicPath);
       client.subscribe(topicPath.c_str());
@@ -184,14 +195,18 @@ void reconnect() {
     }
   }
 }
-void manageSerial() {
-  if (startReceived && endReceived) {
-    Serial.println(inputString);
-    parseData(inputString);
+void manageSerial1() {
+  if (startReceived1 && endReceived1) {
+    // Serial.println(inputString);
+    // parseData(inputString);
+    Serial.println(receivedData1);
+    parseData(receivedData1);
     Serial.println("--------0----------");
-    startReceived = false;
-    endReceived = false;
-    inputString = "";
+    startReceived1 = false;
+    endReceived1 = false;
+    // inputString = "";
+    memset(receivedData1, 0, BUFFER_SIZE_CHAR);
+    receivedDataLength1 = 0;
   }
 }
 
