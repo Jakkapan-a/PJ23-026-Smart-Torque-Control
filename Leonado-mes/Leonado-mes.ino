@@ -17,7 +17,7 @@ char receivedData[BUFFER_SIZE_CHAR];
 int receivedDataLength = 0;
 boolean isDataReceived = false;
 uint8_t countDownReceiveData = 0;
-#define TIME_COUNT_DOWN_RECEIVE_DATA 3 // 3 seconds
+#define TIME_COUNT_DOWN_RECEIVE_DATA 5 // 3 seconds / 0.5 second = 6
 
 // ----------------- Functions -----------------
 class KbdRptParser : public KeyboardReportParser
@@ -197,7 +197,9 @@ void loop()
       countDownReceiveData--;
       if(countDownReceiveData == 0){
         receivedData[receivedDataLength] = '\0'; // terminate the string
-        isDataReceived = true;
+        // isDataReceived = true;
+        memset(receivedData, 0, BUFFER_SIZE_CHAR);
+        receivedDataLength = 0;
       }
     }
 

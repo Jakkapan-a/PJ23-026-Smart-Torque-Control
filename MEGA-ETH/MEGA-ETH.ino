@@ -270,7 +270,7 @@ void parseData(String data) {
     }
   }
 else
-  if (data.indexOf("PUB:") != -1){
+  if (data.indexOf("PUB=") != -1){
       Serial3.println("$" + data + "#");
     }
 }

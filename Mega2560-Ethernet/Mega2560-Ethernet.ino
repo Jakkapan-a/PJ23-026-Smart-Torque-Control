@@ -74,8 +74,9 @@ TcPINOUT relayRed(RELAY_RED, false);
 TcPINOUT relayAram(RELAY_ARAM, false);
 
 
-#define TORQUE 10
-TcPINOUT torque(TORQUE, false);
+#define TORQUE_PIN 10
+void torqueOnEventChange(bool state);
+TcPINOUT torque(TORQUE_PIN, false);
 
 #define LOCK_JIG_PIN 22
 void lockJigOnEventChange(bool state);
@@ -117,9 +118,7 @@ uint8_t countDownStatusMES = 0;     // Sec 10
 uint8_t CountUpCommunication = 0;
 #define TIME_UP_COMMUNICATION 14  // 14 seconds
 
-boolean setupETH = true;
-uint8_t sendInfo = 0;
-uint8_t oldSendInfo = 1;
+
 // 16/02/2024
 #define BUFFER_DATE 20
 #define BUFFER_TIME 10  // 00:00:00
@@ -141,7 +140,7 @@ const char lettersNumber[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' 
 int numCharsNumber = sizeof(lettersNumber) - 1;
 int indexCharNumber = 0;
 
-boolean isAllowMES = false;
+boolean isAllowMES, oldIsAllowMes = false;
 
 String model = "";
 
@@ -380,9 +379,9 @@ void setup() {
   tickerUnlockJig.off();
   // Add function of button
   btnStart.OnEventChange(btnStartOnEventChange);
-  btnStart.DebounceDelay(20);  // 10ms
+  btnStart.DebounceDelay(10);  // 20ms
   btnStop.OnEventChange(btnStopOnEventChange);
-  btnStop.DebounceDelay(20);  // 10ms
+  btnStop.DebounceDelay(10);  // 20ms
 
   btnEsc.OnEventChange(btnEscOnEventChange);
   btnEsc.DebounceDelay(20);
@@ -395,6 +394,7 @@ void setup() {
   btnScwKey.OnEventChange(btnScwKeyOnEventChange);
   btnCensorOnSt.OnEventChange(btnCensorOnStOnEventChange);
 
+  torque.setCallback(torqueOnEventChange);
   lockJig.setCallback(lockJigOnEventChange);
   indexMenu = 0;  // 0: Home, 1: Setting 2: MES Serial
 
@@ -448,19 +448,33 @@ void loop() {
 
 
 void mainFunction() {
+  if(isAllowMES != oldIsAllowMes){
+    if(statusServer){
+      Serial3.println("$PUB=S1_ALLOW_MES:"+String(isAllowMES?"ON":"OFF") + "#" );
+    }
+    oldIsAllowMes = isAllowMES;
+  }
+
   if (stateStart && stateStop && stateCensorOnStation) {
     stateStart = false;
     stateStop = false;
     timeComplete = millis() - timeStart;
     countScrew++;
 
-    String data = "TEST="+String(countScrew) + "/" + String(countScrewMax) + "PCS," + String(timeComplete) + "ms";
-    data += ",STD:" + String(stdMin) + "-" + String(stdMax) + "ms";
-    data += "RESULT:" + String(timeComplete >= stdMin && timeComplete <= stdMax ? "PASS" : "NG");
-    
-    // Save data to SD Card
-    appendFile(fileName, data.c_str());
-    
+    if(statusServer){
+      Serial3.println("$PUB=S1_TIME_COMPLETE:"+String(timeComplete) + "#" );
+      Serial3.println("$PUB=S1_SCW_COUNT:"+String(countScrew) + "#" );
+      Serial3.println("$PUB=S1_SCW_TOTAL:"+String(countScrewMax) + "#" );
+      Serial3.println("$PUB=S1_TEST:"+String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG") + "#" );
+    }else{
+      String data = "TIME_COMPLETE=" + String(timeComplete);
+      data += ",SCW_COUNT=" + String(countScrew);
+      data += ",SCW_TOTAL=" + String(countScrewMax);
+      data += ",TEST=" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
+
+      // Save data to SD Card
+      appendFile(fileName, data.c_str());
+    }
     Serial.println("Time complete: " + String(timeComplete));
     // Check time is inside range min and max
     if (timeComplete >= stdMin && timeComplete <= stdMax) {
@@ -499,10 +513,14 @@ void mainFunction() {
     tickerUnlockJig.on();
     pressUnlockJigCountDown = 0;
     pressUnlockJig = 0;
-    String data = "UNLOCK_BY=SCW_KEY";
+    if(statusServer){
+      Serial3.println("$PUB=S1_UNLOCK_BY:SW_KEY#");
+    }else{
 
-    // Save data to SD Card
-    appendFile(fileName, data.c_str());
+      String data = "SW_KEY=SCW_KEY";
+      // Save data to SD Card
+      appendFile(fileName, data.c_str());
+    }
   }
   unsigned long currentMillis = millis();
   // -------------------- Debounce 10 ms ------------------ //
@@ -527,8 +545,6 @@ void mainFunction() {
     } else {
       countPressDown = 0;
     }
-
-    sendInfoConnectMQTT();
     
     lastDebounceTime = currentMillis;
   } else if (currentMillis < lastDebounceTime) {  // Overflows
@@ -667,16 +683,6 @@ void mainFunction() {
   }
 }
 
-void reSetupETHInfo()
-{
-  if(!setupETH && oldSendInfo == 0 ){
-    return;
-  }
-  // Serial.println("Setup ETH: " + String(setupETH));
-  // Resend info
-  sendInfo = oldSendInfo;
-  // sendInfoConnectMQTT();
-}
 void checkSDCard() {
   // loop if SD card is not present
   String dot = ".";
@@ -694,12 +700,6 @@ void checkSDCard() {
 }
 
 void clockDate() {
-  // Serial.println(rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/'));
-  // Serial.println(rtc.getDOWStr());
-  // Serial.println(rtc.getTimeStr());
-  // myDate = rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/');
-  // myTime = rtc.getTimeStr();
-
   char *p = rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/');
   size_t len = strlen(p);
   for (size_t i = 0; i < len && i < BUFFER_DATE - 1; i++) {
@@ -740,19 +740,29 @@ void manageSerial() {
 void manageSerial1() {
   if (startReceived1 && endReceived1) {
     // Serial.println(inputString1,DEC);
+    // byte inputByte1[BUFFER_SIZE_DATA]
+
+    char hexStr[(inputStringLength1 * 2) + 1];
+    memset(hexStr, 0, sizeof(hexStr)); // Clear hexStr
+
     for (int i = 0; i < inputStringLength1; i++) {
       Serial.print(inputByte1[i],HEX);
       Serial.print(" ");
+      sprintf(&hexStr[i * 2], "%02X", inputByte1[i]);
     }
-    Serial3.print("$RFID:");
-    Serial3.print(inputString1);
-    Serial3.println("#");
+
+
     if (!statusServer) {
       setMenuShowErrorWithData(3, "Server fail!");
       alarmsTone = 10;
     } else {
-      setMenuShowErrorWithData(3, inputString1);
+      setMenuShowErrorWithData(3, hexStr);
+      Serial3.print("$PUB=S1_RFID:");
+      Serial3.print(hexStr);
+      Serial3.println("#");
     }
+
+    Serial.println(hexStr);
     Serial.println("--------1----------");
     startReceived1 = false;
     endReceived1 = false;
@@ -791,7 +801,6 @@ void manageSerial3() {
 
 void parseData(String data) {
   data.trim();
-
   if (data.indexOf("SERIAL:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "SERIAL:");
@@ -799,6 +808,10 @@ void parseData(String data) {
     if (isAllowMES == true) {
       Serial.println("Send to MES: " + data);
       Serial2.println("$" + data + "#");
+
+      if(statusServer){
+        Serial3.println("$PUB=S1_SERIAL:" + serialData + "#");
+      }
       passToneCount = 2;
     } else {
       alarmsTone = 15;
@@ -831,14 +844,14 @@ void parseData(String data) {
       statusETH = false;
     }
     // Response to master
-  } else if (data.indexOf("RFID_RES:") != -1) {
-    String rfidData = extractData(data, "RFID_RES:");
+  } else if (data.indexOf("S1_RFID:") != -1) {
+    String rfidData = extractData(data, "S1_RFID:");
     if (rfidData == "OK") {
       setMenuShowErrorWithData(4, "PASS");
       countLockJig = countLockJigMax;
       passToneCount += 1;
       btnScwKeyOnEventChange(false);  // Unlock jig
-    } else {
+    } else  if (rfidData == "NOT" || rfidData == "404") {
       setMenuShowErrorWithData(4, "Not allow");
       alarmsTone = 15;
     }
@@ -1052,28 +1065,48 @@ void btnStartOnEventChange(bool state) {
   stateStart = !state;
   if (stateStart) {
     timeStart = millis();  // Stamp time start
-    Serial.print("Start: ");
-    Serial.println(timeStart);
+    // Serial.print("Start: ");
+    // Serial.println(timeStart);
     LED_Controls(3);
-    // String data = "START=" + String(timeStart);
-    // Save data to SD Card
-    // appendFile(fileName, data.c_str());
+
+  
   } else if (status_test == TESTING) {
-    Serial.println("--------LED OFF STD ----------");
+    // Serial.println("--------LED OFF STD ----------");
     LED_Controls(0);
   } else if (status_test == PASS || status_test == NG || countScrew >= countScrewMax) {
     torque.off();
   }
+
+    if (stateStart) {
+      if(statusServer){
+          Serial3.println("$PUB=S1_T_START:ON#");
+        }else{
+          String data = "START=" + String(timeStart);
+          // Save data to SD Card
+          appendFile(fileName, data.c_str());
+        }
+    }else{
+      if(statusServer){
+          Serial3.println("$PUB=S1_T_START:OFF#");
+        }
+        // else{
+          // String data = "STOP=" + String(millis());
+          // // Save data to SD Card
+          // appendFile(fileName, data.c_str());
+        // }
+    }
 }
 
 void btnStopOnEventChange(bool state) {
   stateStop = !state;
   if (stateStop) {
-    Serial.println("Stop");
-    // String data = "STOP=" + String(millis());
-    // Save data to SD Card
-    // appendFile(fileName, data.c_str());
+    if(statusServer){
+      Serial3.println("$PUB=S1_T_STOP:ON#");
+    }
   } else {
+    if(statusServer){
+      Serial3.println("$PUB=S1_T_STOP:OFF#");
+    }
   }
 }
 
@@ -1091,6 +1124,10 @@ void btnCensorOnStOnEventChange(bool state) {
     torque.off();
     countLockJig = 0;
 
+    if(statusServer){
+      Serial3.println("$PUB=S1_STATION:OFF#");
+    }
+
   } else {
     countLockJig = countLockJigMax;
     lastDebounceTimeSecond = millis();
@@ -1105,9 +1142,17 @@ void btnCensorOnStOnEventChange(bool state) {
     // Serial.print("Decode file name: ");
     // Serial.println(decodeFileName(fileName));
 
+
+    if(statusServer){
+      Serial3.println("$PUB=S1_STATION:ON#");
+      Serial3.println("$PUB=S1_MODEL:"+model+"#");
+      Serial3.println("$PUB=S1_STD:"+String(stdMin)+"-"+String(stdMax)+"#");
+      Serial3.println("$PUB=S1_FILE_ID:"+String(fileName)+"#");
+    }
+
     String data = "MODEL=" + model;
     data += "\nID=" + id;
-    data += "\nIP=" + String(IP[0]) + "." + String(IP[1]) + "." + String(IP[2]) + "." + String(IP[3]);
+    // data += "\nIP=" + String(IP[0]) + "." + String(IP[1]) + "." + String(IP[2]) + "." + String(IP[3]);
     // appendFile
     appendFile(fileName,data.c_str());
 
@@ -1213,13 +1258,6 @@ void writeID(int address, String data) {
   updateEEPROM(address, data);
 }
 
-// uint8_t* getIP(int address) {
-//   uint8_t ip[4];
-//   for (int i = 0; i < 4; i++) {
-//     ip[i] = readInt8InEEPROM(address + i);
-//   }
-//   return ip;
-// }
 void getIP(int address, uint8_t (&ip)[4]) {
   for (int i = 0; i < 4; i++) {
     ip[i] = readInt8InEEPROM(address + i);
@@ -1338,7 +1376,7 @@ void stateButtonPressed() {
                   btnEscOnEventPressed();
                 }
 
-#if 1
+#if 0
   Serial.print("indexMenu: ");
   Serial.println(indexMenu);
   Serial.print("selectMenu: ");
@@ -2793,75 +2831,21 @@ void appendFile(const char *filename, const char *message) {
 }
 
 void lockJigOnEventChange(bool state) {
-  String message = state ? "JIG=LOCK" : "JIG=UNLOCK";
-  appendFile(fileName, message.c_str());
+
+      if(statusServer)
+      {
+        Serial3.println("PUB=S1_JIG_LOCK:"+String(state ? "LOCK" : "UNLOCK"));
+      }else{
+        String message = state ? "JIG=LOCK" : "JIG=UNLOCK";
+        appendFile(fileName, message.c_str());
+      }
 }
-
-
-void sendInfoConnectMQTT()
-{
-  if(sendInfo == 0){
-    return;
+void torqueOnEventChange(bool state) {
+  if(statusServer)
+  {
+    Serial3.println("PUB=S1_TORQUE:"+String(state ? "ON":"OFF"));
+  }else{
+    String message = "TORQUE=" + String(state ? "ON":"OFF");
+    appendFile(fileName, message.c_str());
   }
-  /*
-  1. ID
-  2. IP 
-  3. GATEWAY
-  4. SUBNET
-  5. MAC
-  6. DNS 
-  7. MQTT SERVER
-  8. MQTT PORT
-
-
-  id = getID(ID_Address);
-  getIP(IP_Address, IP);
-  getIP(GATEWAY_Address, GATEWAY);
-  getIP(SUBNET_Address, SUBNET);
-  getMac(MAC_Address, MAC);
-  getIP(DNS_Address, DNS);
-  getIP(IP_SERVER_Address, IP_SERVER);
-  SERVER_PORT_MQTT = readInt16CInEEPROM(SERVER_PORT_MQTT_Address);
-  */
- String data = "";
- if(sendInfo == 1)
- {
-   data = "ETH_ID:"+id;
-  Serial3.println(data);
- 
- }
- else if(sendInfo == 2)
- {
-   data = "ETH_IP:"+String(IP[0])+","+String(IP[1])+","+String(IP[2])+","+String(IP[3]);
-  Serial3.println(data);
- }
- else if(sendInfo == 3)
- {
-   data = "ETH_GATEWAY:"+String(GATEWAY[0])+","+String(GATEWAY[1])+","+String(GATEWAY[2])+","+String(GATEWAY[3]);
-  Serial3.println(data);
- }
- else if(sendInfo == 4)
- {
-   data = "ETH_SUBNET:"+String(SUBNET[0])+","+String(SUBNET[1])+","+String(SUBNET[2])+","+String(SUBNET[3]);
- }else if(sendInfo == 5)
- {
-  data = "ETH_MAC:"+String(MAC[0])+","+String(MAC[1])+","+String(MAC[2])+","+String(MAC[3])+","+String(MAC[4])+","+String(MAC[5]);
- }else if(sendInfo == 6)
- {
-  data = "ETH_DNS:"+String(DNS[0])+","+String(DNS[1])+","+String(DNS[2])+","+String(DNS[3]);
- }else if(sendInfo == 7)
- {
-  data = "ETH_MQTT_IP:"+String(IP_SERVER[0])+","+String(IP_SERVER[1])+","+String(IP_SERVER[2])+","+String(IP_SERVER[3]);
- }else if(sendInfo == 8)
- {
-  data = "ETH_MQTT_PORT:"+String(SERVER_PORT_MQTT);
- }else if(sendInfo == 9)
- {
-  data = "ETH_CONNECT:OK";
- }
-  Serial3.println("$"+data+"#");
-  Serial.println(data);
-  oldSendInfo = sendInfo;
-  sendInfo = 0;
 }
-

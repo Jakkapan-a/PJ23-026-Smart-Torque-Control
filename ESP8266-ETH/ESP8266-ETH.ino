@@ -188,10 +188,10 @@ void parseData(String data) {
 
   if(statusServer == true){
     // Publish data to MQTT
-    if (data.indexOf("PUB:") != -1) {
+    if (data.indexOf("PUB=") != -1) {
       // Send data to MES
-      String serialData = extractData(data, "PUBLISH:");
-      Serial.println("PUB: " + serialData);
+      String serialData = extractData(data, "PUB=");
+      Serial.println("PUB= " + serialData);
       client.publish(topicPath.c_str(), serialData.c_str());
     }
   }
