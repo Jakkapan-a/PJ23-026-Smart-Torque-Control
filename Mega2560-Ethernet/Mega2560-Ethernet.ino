@@ -176,8 +176,8 @@ uint16_t SERVER_PORT_MQTT = 1883;
 const int IP_SERVER_Address = 348;         // 348 - 351 = 4 byte or 4 digit
 const int SERVER_PORT_MQTT_Address = 352;  // 352 - 353 = 2 byte or 2 digit
 
-const String MQTT_USER = "automation";
-const String MQTT_PASS = "pssw@automation";
+// const String MQTT_USER = "automation";
+// const String MQTT_PASS = "pssw@automation";
 
 int indexNumber = 0;
 uint8_t lengthNumber = 5;  // 5 Digit name
@@ -459,10 +459,8 @@ void loop() {
 
   unsigned long currentMillis = millis();
   mainFunction();
-
   ToneFun(currentMillis, lastTimeTonePASS, 200, 2000, 50, passToneCount);  //
   ToneFun(currentMillis, lastTimeToneNG, 100, 2000, 50, ngToneCount);
-
   ToneFun(currentMillis, lastTimeToneAlarms, 100, 2000, 50, alarmsTone);
 }
 
@@ -622,7 +620,7 @@ void mainFunction() {
   if (currentMillis - lastDebounceTimeSecond > 1000) {
     clockDate();
     checkSDCard();
-    reSetupETHInfo();
+    // reSetupETHInfo();
     CountUpCommunication++;
     if (CountUpCommunication > TIME_UP_COMMUNICATION) {
       CountUpCommunication = 0;
@@ -2881,3 +2879,4 @@ void sendInfoConnectMQTT()
   oldSendInfo = sendInfo;
   sendInfo = 0;
 }
+

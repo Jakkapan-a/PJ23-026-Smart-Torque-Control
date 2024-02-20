@@ -164,14 +164,6 @@ void reconnect() {
       Serial.print(Ethernet.linkStatus() == LinkON ? "Connected" : "Disconnected");
       Serial.println();
 
-//       Change DNS
-//       if(toggleDNS){
-//         Ethernet.begin(mac, ip, primaryDNS, gateway, subnet);
-//       }else{
-//         Ethernet.begin(mac, ip, secondaryDNS, gateway, subnet);
-//       }
-//      toggleDNS = !toggleDNS;
-
       if(Ethernet.linkStatus() == LinkOFF){
         return;
       }
@@ -198,8 +190,6 @@ void reconnect() {
 }
 void manageSerial1() {
   if (startReceived1 && endReceived1) {
-    // Serial.println(inputString);
-    // parseData(inputString);
     Serial.println(receivedData1);
     parseData(receivedData1);
     Serial.println("--------0----------");
