@@ -12,11 +12,11 @@ RST -> 8
 */
 
 byte macId[] = { 0xDE, 0xAD, 0xBD, 0xEF, 0xFE, 0xED };
-IPAddress ip(10, 192, 13, 173);        // IP of Arduino
-IPAddress gateway(10, 192, 13, 254);   // Gateway
-IPAddress subnet(255, 255, 255, 0);    // Subnet mask
+IPAddress ip(10, 192, 13, 173);          // IP of Arduino
+IPAddress gateway(10, 192, 13, 254);     // Gateway
+IPAddress subnet(255, 255, 255, 0);      // Subnet mask
 IPAddress primaryDNS(10, 192, 13, 172);  // DNS server
-IPAddress server(10, 192, 13, 172);    // IP of MQTT server
+IPAddress server(10, 192, 13, 172);      // IP of MQTT server
 
 // IPAddress ip(192, 168, 137, 19);          // IP of Arduino
 // IPAddress gateway(192, 168, 137, 1);     // Gateway
@@ -37,7 +37,7 @@ const String MQTT_TOPIC_SUB = "MS";
 String MQTT_TOPIC_ID = "T0001";
 uint32_t debounceTime = 0;
 boolean statusServer = false;
-const String topicPath =  String("MC/" + MQTT_TOPIC_ID).c_str();
+const String topicPath = String("MC/" + MQTT_TOPIC_ID).c_str();
 const String topicPathStatus = String("MC/" + MQTT_TOPIC_ID + "/" + MQTT_TOPIC_STATUS).c_str();
 const String topicPathSub = String("MS/" + MQTT_TOPIC_ID).c_str();
 
@@ -77,34 +77,65 @@ const char endChar1 = '#';
 char receivedData1[BUFFER_SIZE_CHAR];
 int receivedDataLength1 = 0;
 void serialEvent1() {
-  // while (Serial1.available()) {
-  //   byte inChar = (byte)Serial1.read();
-  //   if (inChar == startChar1) {
-  //     startReceived1 = true;
-  //     // inputString = "";
-  //     memset(receivedData1, 0, BUFFER_SIZE_CHAR);
-  //     receivedDataLength1 = 0;
-  //     // inputString += (char)inChar;
-  //   } else if (startReceived1 && inChar == endChar1) {
-  //     // inputString += (char)inChar;
-  //     endReceived1 = true;
-  //   } else if (startReceived1) {
-  //     // inputString += (char)inChar;
-  //     if (receivedDataLength1 < BUFFER_SIZE_CHAR - 1) {
-  //       receivedData1[receivedDataLength1++] = inChar;
-  //     } else {
-  //       startReceived1 = false;
-  //       endReceived1 = false;
-  //       receivedDataLength1 = 0;
-  //     }
-  //   }
-  // }
+  while (Serial1.available()) {
+    byte inChar = (byte)Serial1.read();
+    if (inChar == startChar1) {
+      startReceived1 = true;
+      // inputString = "";
+      memset(receivedData1, 0, BUFFER_SIZE_CHAR);
+      receivedDataLength1 = 0;
+      // inputString += (char)inChar;
+    } else if (startReceived1 && inChar == endChar1) {
+      // inputString += (char)inChar;
+      endReceived1 = true;
+    } else if (startReceived1) {
+      // inputString += (char)inChar;
+      if (receivedDataLength1 < BUFFER_SIZE_CHAR - 1) {
+        receivedData1[receivedDataLength1++] = inChar;
+      } else {
+        startReceived1 = false;
+        endReceived1 = false;
+        receivedDataLength1 = 0;
+      }
+    }
+  }
 }
+boolean startReceived3 = false;
+boolean endReceived3 = false;
+const char startChar3 = '$';
+const char endChar3 = '#';
 
+// String inputString3 = "";
+char receivedData3[BUFFER_SIZE_CHAR];
+int receivedDataLength3 = 0;
+void serialEvent3() {
+  while (Serial3.available()) {
+    byte inChar = (byte)Serial3.read();
+    if (inChar == startChar3) {
+      startReceived3 = true;
+      // inputString = "";
+      memset(receivedData3, 0, BUFFER_SIZE_CHAR);
+      receivedDataLength3 = 0;
+      // inputString += (char)inChar;
+    } else if (startReceived3 && inChar == endChar3) {
+      // inputString += (char)inChar;
+      endReceived3 = true;
+    } else if (startReceived3) {
+      // inputString += (char)inChar;
+      if (receivedDataLength3 < BUFFER_SIZE_CHAR - 1) {
+        receivedData3[receivedDataLength3++] = inChar;
+      } else {
+        startReceived3 = false;
+        endReceived3 = false;
+        receivedDataLength3 = 0;
+      }
+    }
+  }
+}
 void setup() {
   Serial.begin(115200);
-  // Serial1.begin(115200);
-  // Serial3.begin(115200);
+  Serial1.begin(115200);
+  Serial3.begin(115200);
 
   // while (!Serial) continue;  // Wait for Serial port to be available
   // // Start the Ethernet connection:
@@ -128,8 +159,12 @@ void setup() {
 
 void loop() {
   // uint32_t currentMillis = millis();
-  // manageSerial1();
-
+  manageSerial1();
+  manageSerial3();
+// Serial.println("$TEST#");
+// // Serial1.println("$TEST#");
+//   Serial3.println("$TEST#");
+//   delay(2000);
   // if (!client.connected()) {
   //   // reconnect();
   //   if (currentMillis - lastReconnectAttempt > reconnectDelay) {
@@ -153,13 +188,17 @@ void loop() {
   // } else if (currentMillis < debounceTime) {
   //   debounceTime = currentMillis;
   // }
+
+  // Serial.println("$STATUS_ETH:ASK#");
+  // Serial.println("$STATUS_SERVER:ASK#");
+  // delay(5000);
 }
 
 // connect to the MQTT broker function
 boolean reconnect() {
   Serial.println("Attempting MQTT connection...");
   statusServer = false;
-  if(Ethernet.linkStatus() != LinkON || Ethernet.hardwareStatus() != EthernetENC28J60) {
+  if (Ethernet.linkStatus() != LinkON || Ethernet.hardwareStatus() != EthernetENC28J60) {
     Serial.println("Ethernet cable is not connected.");
     return false;
   }
@@ -184,7 +223,7 @@ void manageSerial1() {
     // Serial.println(inputString);
     // parseData(inputString);
     Serial.println(receivedData1);
-    // parseData(receivedData1);
+    parseData(receivedData1);
     Serial.println("--------0----------");
     startReceived1 = false;
     endReceived1 = false;
@@ -194,38 +233,46 @@ void manageSerial1() {
   }
 }
 
+void manageSerial3() {
+  if (startReceived3 && endReceived3) {
+    Serial1.print("$");
+    Serial1.print(receivedData3);
+    Serial1.println("#");
+
+    Serial.println(receivedData3);
+    Serial.println("--------3----------");
+    startReceived3 = false;
+    endReceived3 = false;
+    memset(receivedData3, 0, BUFFER_SIZE_CHAR);
+    receivedDataLength3 = 0;
+  }
+}
 void parseData(String data) {
   data.trim();
+
   if (data.indexOf("STATUS_ETH:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "STATUS_ETH:");
     Serial.println("STATUS_ETH: " + serialData);
-    
-
     if (serialData == "ASK") {
-      Serial1.println("$STATUS_ETH:OK#");
+      // Serial.println("$STATUS_ETH:ASK#");
+        Serial3.println("$" + data + "#");
     }
-    
-  }
+  }else
   if (data.indexOf("STATUS_SERVER:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "STATUS_SERVER:");
     Serial.println("STATUS_SERVER: " + serialData);
     if (serialData == "ASK") {
-      Serial1.println("$STATUS_SERVER:" + String(statusServer ? "OK" : "OFFLINE") + "#");
+      // Serial1.println("$STATUS_SERVER:" + String(statusServer ? "OK" : "OFFLINE") + "#");
+      // Serial.println("$" + data + "#");
+      Serial3.println("$" + data + "#");
     }
   }
-
-  if(statusServer == true){
-    // Publish data to MQTT
-    if (data.indexOf("PUBLISH:") != -1) {
-      // Send data to MES
-      String serialData = extractData(data, "PUBLISH:");
-      Serial.println("PUBLISH: " + serialData);
-      client.publish(topicPath.c_str(), serialData.c_str());
+else
+  if (data.indexOf("PUB:") != -1){
+      Serial3.println("$" + data + "#");
     }
-  
-  }
 }
 
 

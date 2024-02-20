@@ -416,29 +416,11 @@ void setup() {
   LED_Controls(0);
 
   status_test = NO_TEST;
-
-  // I2c communication with slave
-  // Wire.begin();
-
-  // Set the slave address to 8
-  // Wire.beginTransmission(8);
-  // Wire.write("x is ");
-  // // Wire.write(123);
-  // Wire.endTransmission();
-
   // Clear
   memset(inputString, 0, BUFFER_SIZE_DATA);
   memset(inputString1, 0, BUFFER_SIZE_DATA);
   memset(inputString2, 0, BUFFER_SIZE_DATA);
   memset(inputString3, 0, BUFFER_SIZE_DATA);
-
-  // rtc.halt(false);
-  // rtc.writeProtect(false);
-  // rtc.setDOW(FRIDAY);
-  // rtc.setTime(19, 53,00);
-  // rtc.setDate(16, 2, 2024);
-  // rtc.writeProtect(true);
-
   generateFileName();
 }
 
@@ -862,8 +844,10 @@ void parseData(String data) {
     }
   }
 
-  manageETH(data);
+  // manageETH(data);
 }
+#if 0
+
 void manageETH(String data){
 //   if(sendInfo == 1)
 //  {
@@ -904,7 +888,7 @@ void manageETH(String data){
     return;
   }
 
-  Serial.println("Received ETH data: " + data);
+  // Serial.println("Received ETH data: " + data);
 
  if (data.indexOf("ETH_ID:") != -1) {
     String extract = extractData(data, "ETH_ID:");
@@ -964,6 +948,7 @@ void manageETH(String data){
  }
 }
 
+#endif
 
 String extractData(String data, String key) {
   int keyIndex = data.indexOf(key);  // Find the position of the key
@@ -2445,6 +2430,7 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
   // 7. IP Server
   // 8. Port Server
   if (selectSubMenu1 > 0) {
+      selectSubMenu1 = 0;  // reset
     //-- ID -- //
     if (selectSubMenu == 1) {
       if (selectSubMenu2 > 0) {
@@ -2532,7 +2518,6 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2) {
         indexIpCal(SUBNET, indexIP, cursorSubnet);
         lcd.setCursor(cursorSubnet, 1);
         lcd.blink();
-
         String setSubnet = String(SUBNET[0]) + "." + String(SUBNET[1]) + "." + String(SUBNET[2]) + "." + String(SUBNET[3]);
         line1 = "SET SUBNET: ";
         line2 = setSubnet;
