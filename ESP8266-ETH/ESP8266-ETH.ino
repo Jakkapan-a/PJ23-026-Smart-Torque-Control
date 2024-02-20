@@ -27,7 +27,7 @@ const char *MQTT_PASS = "pssw@automation";
 const String MQTT_TOPIC = "MC";
 const String MQTT_TOPIC_STATUS = "status";
 const String MQTT_TOPIC_SUB = "MS";
-String MQTT_TOPIC_ID = "T001";
+String MQTT_TOPIC_ID = "T0001";
 uint32_t debounceTime = 0;
 boolean statusServer = false;
 const String topicPath =  String("MC/" + MQTT_TOPIC_ID).c_str();
@@ -74,9 +74,9 @@ void serialEvent() {
 // Callback function header
 void MQTT_Callback(char *topic, byte *payload, unsigned int length) {
   // Print the topic
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
+  // Serial.print("Message arrived [");
+  // Serial.print(topic);
+  // Serial.print("] ");
   // Print the payload
   Serial.print("$SUB=");
   for (unsigned int i = 0; i < length; i++) {
@@ -169,7 +169,7 @@ void parseData(String data) {
   if (data.indexOf("STATUS_ETH:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "STATUS_ETH:");
-    Serial.println("STATUS_ETH: " + serialData);
+    // Serial.println("STATUS_ETH: " + serialData);
     
 
     if (serialData == "ASK") {
@@ -180,7 +180,7 @@ void parseData(String data) {
   if (data.indexOf("STATUS_SERVER:") != -1) {
     // Send data to MES
     String serialData = extractData(data, "STATUS_SERVER:");
-    Serial.println("STATUS_SERVER: " + serialData);
+    // Serial.println("STATUS_SERVER: " + serialData);
     if (serialData == "ASK") {
       Serial.println("$STATUS_SERVER:" + String(statusServer ? "OK" : "OFFLINE") + "#");
     }
@@ -191,7 +191,7 @@ void parseData(String data) {
     if (data.indexOf("PUB=") != -1) {
       // Send data to MES
       String serialData = extractData(data, "PUB=");
-      Serial.println("PUB= " + serialData);
+      // Serial.println("PUB= " + serialData);
       client.publish(topicPath.c_str(), serialData.c_str());
     }
   }

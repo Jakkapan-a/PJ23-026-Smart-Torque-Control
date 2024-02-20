@@ -9,7 +9,7 @@
 
 DS1302 rtc(2, 3, 4);  // RST, DAT, CLK
 
-#define DEBUG 1
+#define DEBUG 0
 #define BUFFER_SIZE_DATA 255  // Buffer size = 255 bytes or 255 characters
 #define BASE_PATH "/data"
 
@@ -475,7 +475,7 @@ void mainFunction() {
       // Save data to SD Card
       appendFile(fileName, data.c_str());
     }
-    Serial.println("Time complete: " + String(timeComplete));
+    // Serial.println("Time complete: " + String(timeComplete));
     // Check time is inside range min and max
     if (timeComplete >= stdMin && timeComplete <= stdMax) {
       // Check count screw
@@ -490,7 +490,7 @@ void mainFunction() {
         LED_Controls(2);
       } else {
         status_test = TESTING;
-        Serial.println("--------LED OFF TESTING NEXT ----------");
+        // Serial.println("--------LED OFF TESTING NEXT ----------");
         isAllowMES = false;
         LED_Controls(0);
       }
@@ -762,8 +762,8 @@ void manageSerial1() {
       Serial3.println("#");
     }
 
-    Serial.println(hexStr);
-    Serial.println("--------1----------");
+    // Serial.println(hexStr);
+    // Serial.println("--------1----------");
     startReceived1 = false;
     endReceived1 = false;
     memset(inputString1, 0, BUFFER_SIZE_DATA);
@@ -771,14 +771,15 @@ void manageSerial1() {
     passToneCount += 1;
     // Clear inputByte1 buffer
     memset(inputByte1, 0, BUFFER_SIZE_DATA);
+
   }
 }
 
 void manageSerial2() {
   if (startReceived2 && endReceived2) {
-    Serial.println(inputString2);
+    // Serial.println(inputString2);
     parseData(inputString2);
-    Serial.println("--------2----------");
+    // Serial.println("--------2----------");
     startReceived2 = false;
     endReceived2 = false;
     memset(inputString2, 0, BUFFER_SIZE_DATA);
@@ -788,9 +789,9 @@ void manageSerial2() {
 
 void manageSerial3() {
   if (startReceived3 && endReceived3) {
-    Serial.println(inputString3);
+    // Serial.println(inputString3);
     parseData(inputString3); // ETH 
-    Serial.println("--------3----------");
+    // Serial.println("--------3----------");
     startReceived3 = false;
     endReceived3 = false;
     memset(inputString3, 0, BUFFER_SIZE_DATA);
@@ -806,7 +807,7 @@ void parseData(String data) {
     String serialData = extractData(data, "SERIAL:");
     setMenuShowErrorWithData(2, serialData);
     if (isAllowMES == true) {
-      Serial.println("Send to MES: " + data);
+      // Serial.println("Send to MES: " + data);
       Serial2.println("$" + data + "#");
 
       if(statusServer){
@@ -856,112 +857,7 @@ void parseData(String data) {
       alarmsTone = 15;
     }
   }
-
-  // manageETH(data);
 }
-#if 0
-
-void manageETH(String data){
-//   if(sendInfo == 1)
-//  {
-//    data = "ETH_ID:"+id;
-//   Serial3.println(data);
-//  }
-//  else if(sendInfo == 2)
-//  {
-//    data = "ETH_IP:"+String(IP[0])+","+String(IP[1])+","+String(IP[2])+","+String(IP[3]);
-//   Serial3.println(data);
-//  }
-//  else if(sendInfo == 3)
-//  {
-//    data = "ETH_GATEWAY:"+String(GATEWAY[0])+","+String(GATEWAY[1])+","+String(GATEWAY[2])+","+String(GATEWAY[3]);
-//   Serial3.println(data);
-//  }
-//  else if(sendInfo == 4)
-//  {
-//    data = "ETH_SUBNET:"+String(SUBNET[0])+","+String(SUBNET[1])+","+String(SUBNET[2])+","+String(SUBNET[3]);
-//  }else if(sendInfo == 5)
-//  {
-//   data = "ETH_MAC:"+String(MAC[0])+","+String(MAC[1])+","+String(MAC[2])+","+String(MAC[3])+","+String(MAC[4])+","+String(MAC[5]);
-//  }else if(sendInfo == 6)
-//  {
-//   data = "ETH_DNS:"+String(DNS[0])+","+String(DNS[1])+","+String(DNS[2])+","+String(DNS[3]);
-//  }else if(sendInfo == 7)
-//  {
-//   data = "ETH_MQTT_IP:"+String(IP_SERVER[0])+","+String(IP_SERVER[1])+","+String(IP_SERVER[2])+","+String(IP_SERVER[3]);
-//  }else if(sendInfo == 8)
-//  {
-//   data = "ETH_MQTT_PORT:"+String(SERVER_PORT_MQTT);
-//  }else if(sendInfo == 9)
-//  {
-//   data = "ETH_CONNECT:true";
-//  }
-
-  if (data.indexOf("ETH_") == -1) {
-    return;
-  }
-
-  // Serial.println("Received ETH data: " + data);
-
- if (data.indexOf("ETH_ID:") != -1) {
-    String extract = extractData(data, "ETH_ID:");
-    if(extract == "OK"){
-      sendInfo = 2; // NEXT TO ETH_IP
-      oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_IP:") != -1){
-    String extract = extractData(data, "ETH_IP:");
-    if(extract == "OK"){
-      sendInfo = 3; // NEXT TO ETH_GATEWAY
-       oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_GATEWAY:") != -1){
- String extract = extractData(data, "ETH_GATEWAY:");
-    if(extract == "OK"){
-      sendInfo = 4; // NEXT TO ETH_SUBNET
-       oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_SUBNET:") != -1){
-    String extract = extractData(data, "ETH_SUBNET:");
-    if(extract == "OK"){
-      sendInfo = 5; // NEXT TO ETH_MAC
-       oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_MAC:") != -1){
-    String extract = extractData(data, "ETH_MAC:");
-    if(extract == "OK"){
-      sendInfo = 6; // NEXT TO ETH_DNS
-       oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_DNS:") != -1){
-    String extract = extractData(data, "ETH_DNS:");
-    if(extract == "OK"){
-      sendInfo = 7; // NEXT TO ETH_MQTT_IP
-       oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_MQTT_IP:") != -1){
-    String extract = extractData(data, "ETH_MQTT_IP:");
-    if(extract == "OK"){
-      sendInfo = 8; // NEXT TO ETH_MQTT_IP
-       oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_MQTT_PORT:") != -1){
-    String extract = extractData(data, "ETH_MQTT_PORT:");
-    if(extract == "OK"){
-      sendInfo = 9; // NEXT TO ETH_MQTT_IP
-       oldSendInfo = 0;
-    }
- }else if(data.indexOf("ETH_CONNECT:") != -1){
-    String extract = extractData(data, "ETH_CONNECT:");
-    if(extract == "OK"){
-      // sendInfo = 4; // NEXT TO CONNECTED
-       oldSendInfo = 0;
-       setupETH = false; // Stop send info
-    }
- }
-}
-
-#endif
 
 String extractData(String data, String key) {
   int keyIndex = data.indexOf(key);  // Find the position of the key
@@ -1089,11 +985,7 @@ void btnStartOnEventChange(bool state) {
       if(statusServer){
           Serial3.println("$PUB=S1_T_START:OFF#");
         }
-        // else{
-          // String data = "STOP=" + String(millis());
-          // // Save data to SD Card
-          // appendFile(fileName, data.c_str());
-        // }
+
     }
 }
 
@@ -1119,7 +1011,7 @@ void btnCensorOnStOnEventChange(bool state) {
     ngToneCount = 0;  // Reset ng tone
     timeComplete = 0;
     LED_Controls(0);
-    Serial.println("--------LED OFF SENSOR ----------");
+    // Serial.println("--------LED OFF SENSOR ----------");
     lockJig.off();
     torque.off();
     countLockJig = 0;
@@ -1136,8 +1028,8 @@ void btnCensorOnStOnEventChange(bool state) {
     // GenerateFileName
     generateFileName();
 
-    Serial.print("File name: ");
-    Serial.println(fileName);
+    // Serial.print("File name: ");
+    // Serial.println(fileName);
 
     // Serial.print("Decode file name: ");
     // Serial.println(decodeFileName(fileName));
@@ -1308,7 +1200,7 @@ void btnUpOnEventChange(bool state) {
   currentStateUp = !state;
   if (!state) {
     stateUp = true;
-    Serial.println("UP");
+    // Serial.println("UP");
     tone(BUZZER_PIN, 2000, 100);
     lastDebounceTimeMillis = millis();
   }
@@ -1318,7 +1210,7 @@ void btnDownOnEventChange(bool state) {
   currentStateDown = !state;
   if (!state) {
     stateDown = true;
-    Serial.println("DOWN");
+    // Serial.println("DOWN");
     tone(BUZZER_PIN, 2000, 100);
     lastDebounceTimeMillis = millis();
   }
@@ -1328,7 +1220,7 @@ void btnEnterOnEventChange(bool state) {
   currentStateEnter = !state;
   if (!state) {
     stateEnter = true;
-    Serial.println("ENTER");
+    // Serial.println("ENTER");
     tone(BUZZER_PIN, 2000, 100);
     lastDebounceTimeMillis = millis();
   }
@@ -1686,13 +1578,13 @@ void btnEnterOnEventPressed() {
       setId = getID(ID_Address);
       indexID = 0;
       resetIndex(letters, indexChar, indexID, setId);
-      Serial.print("Load ID from EEPROM: ");
-      Serial.println(setId);
+      // Serial.print("Load ID from EEPROM: ");
+      // Serial.println(setId);
     } else if (selectSubMenu == 2) {
       // Load IP from EEPROM
       getIP(IP_Address, IP);
       indexIP = 0;
-      Serial.print("Load IP from EEPROM: ");
+      // Serial.print("Load IP from EEPROM: ");
       Serial.println(IP[0]);
       Serial.println(IP[1]);
       Serial.println(IP[2]);
@@ -1701,7 +1593,7 @@ void btnEnterOnEventPressed() {
       // Load MAC from EEPROM
       getMac(MAC_Address, MAC);
       indexIP = 0;
-#if 1
+#if 0
       Serial.print("Load MAC from EEPROM: ");
       Serial.println(String(MAC[0], HEX));
       Serial.println(String(MAC[1], HEX));
