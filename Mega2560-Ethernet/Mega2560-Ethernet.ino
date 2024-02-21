@@ -462,10 +462,11 @@ void mainFunction() {
     countScrew++;
 
     if(statusServer){
-      Serial3.println("$PUB=S1_TIME_COMPLETE:"+String(timeComplete) + "#" );
-      Serial3.println("$PUB=S1_SCW_COUNT:"+String(countScrew) + "#" );
-      Serial3.println("$PUB=S1_SCW_TOTAL:"+String(countScrewMax) + "#" );
-      Serial3.println("$PUB=S1_TEST:"+String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG") + "#" );
+      String data = "S1_TIME_COMPLETE:" + String(timeComplete);
+      data += ",S1_SCW_COUNT:" + String(countScrew);
+      data += ",S1_SCW_TOTAL:" + String(countScrewMax);
+      data += ",S1_TEST:" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
+      Serial3.println("$PUB=" + data + "#");
     }else{
       String data = "TIME_COMPLETE=" + String(timeComplete);
       data += ",SCW_COUNT=" + String(countScrew);
@@ -1036,10 +1037,16 @@ void btnCensorOnStOnEventChange(bool state) {
 
 
     if(statusServer){
-      Serial3.println("$PUB=S1_STATION:ON#");
-      Serial3.println("$PUB=S1_MODEL:"+model+"#");
-      Serial3.println("$PUB=S1_STD:"+String(stdMin)+"-"+String(stdMax)+"#");
-      Serial3.println("$PUB=S1_FILE_ID:"+String(fileName)+"#");
+      // Serial3.println("$PUB=S1_STATION:ON#");
+      // Serial3.println("$PUB=S1_MODEL:"+model+"#");
+      // Serial3.println("$PUB=S1_STD:"+String(stdMin)+"-"+String(stdMax)+"#");
+      // Serial3.println("$PUB=S1_FILE_ID:"+String(fileName)+"#");
+
+      String data = "S1_STATION:ON";
+      data += ",S1_MODEL:" + model;
+      data += ",S1_STD:" + String(stdMin) + "-" + String(stdMax);
+      data += ",S1_FILE_ID:" + String(fileName);
+      Serial3.println("$PUB=" + data + "#");
     }
 
     String data = "MODEL=" + model;
