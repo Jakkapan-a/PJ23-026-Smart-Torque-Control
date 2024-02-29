@@ -84,6 +84,9 @@ TcPINOUT lockJig(LOCK_JIG_PIN, false);
 #define TICKER_UNLOCK_JIG 42
 TcPINOUT tickerUnlockJig(TICKER_UNLOCK_JIG, true);
 
+#define MES_RELAY_PIN 23
+TcPINOUT mesRelay(MES_RELAY_PIN, false);
+
 // -------------------- BUZZER -------------------- //
 #define BUZZER_PIN 6
 // -------------------- EEPROM -------------------- //
@@ -169,9 +172,6 @@ uint16_t SERVER_PORT_MQTT = 1883;
 const int IP_SERVER_Address = 348;        // 348 - 351 = 4 byte or 4 digit
 const int SERVER_PORT_MQTT_Address = 352; // 352 - 353 = 2 byte or 2 digit
 
-// const String MQTT_USER = "automation";
-// const String MQTT_PASS = "pssw@automation";
-
 int indexNumber = 0;
 uint8_t lengthNumber = 5; // 5 Digit name
 
@@ -200,6 +200,10 @@ boolean stateLockJig = false;
 int countLockJig = 0;
 int countUnlockJig = 0;
 const int countLockJigMax = 2;
+
+uint32_t totalNumberFile = 0;
+bool isReadNumberFile = false;
+
 enum STATUS_TEST
 {
   PASS,
@@ -293,8 +297,6 @@ void serialEvent1()
   while (Serial1.available())
   {
     byte inChar = (byte)Serial1.read();
-    // Serial.print(inChar,HEX);
-    //  Serial.print(" ");
     if (inChar == startChar1)
     {
       startReceived1 = true;
@@ -489,6 +491,12 @@ void mainFunction()
       Serial3.println("$PUB=S1_ALLOW_MES:" + String(isAllowMES ? "ON" : "OFF") + "#");
     }
     oldIsAllowMes = isAllowMES;
+
+    if(isAllowMES){
+      mesRelay.on();
+    }else{
+      mesRelay.off();
+    }
   }
 
   if (stateStart && stateStop && stateCensorOnStation)
@@ -505,6 +513,14 @@ void mainFunction()
       data += ",S1_SCW_TOTAL:" + String(countScrewMax);
       data += ",S1_TEST:" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
       Serial3.println("$PUB=" + data + "#");
+
+      data = "TIME_COMPLETE=" + String(timeComplete);
+      data += ",SCW_COUNT=" + String(countScrew);
+      data += ",SCW_TOTAL=" + String(countScrewMax);
+      data += ",TEST=" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
+
+      // Save data to SD Card
+      appendFile(fileName, data.c_str());
     }
     else
     {
@@ -516,7 +532,6 @@ void mainFunction()
       // Save data to SD Card
       appendFile(fileName, data.c_str());
     }
-    // Serial.println("Time complete: " + String(timeComplete));
     // Check time is inside range min and max
     if (timeComplete >= stdMin && timeComplete <= stdMax)
     {
@@ -557,6 +572,10 @@ void mainFunction()
     ngToneCount = totalToneNG;
   }
 
+  if(isReadNumberFile == true){
+    totalNumberFile = getTotalNumberOfFiles();
+    isReadNumberFile = false;
+  }
   if (pressUnlockJigCountDown > 0 && pressUnlockJig == 2)
   {
     tickerUnlockJig.on();
@@ -816,6 +835,8 @@ void checkSDCard()
       delay(300);
     }
   }
+
+  isReadNumberFile = true;
 }
 
 void clockDate()
@@ -1196,6 +1217,9 @@ void btnStopOnEventChange(bool state)
   stateStop = !state;
   if (stateStop)
   {
+     String data = "STOP=" + String(millis());
+      // Save data to SD Card
+      appendFile(fileName, data.c_str());
     if (statusServer)
     {
       Serial3.println("$PUB=S1_T_STOP:ON#");
@@ -1268,7 +1292,7 @@ void btnCensorOnStOnEventChange(bool state)
 
     data = "DATE_TIME=" + String(myDate) + " " + String(myTime);
     data += "\nSTD_MIN=" + String(stdMin);
-    data += "\nSTD_MAX=" + String(stdMin);
+    data += "\nSTD_MAX=" + String(stdMax);
     data += "\nCOUNT=" + String(countScrewMax);
 
     appendFile(fileName, data.c_str());
@@ -3315,6 +3339,7 @@ void indexMacCal(uint8_t mac[], uint8_t index_input, uint8_t &index_output, Stri
 const char _letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 void generateFileName()
 {
+  
   int indexName = 0;
   // Clear file
   memset(fileName, 0, FILE_NAME_SIZE);
@@ -3325,6 +3350,7 @@ void generateFileName()
   int digitYear = 0;
   String strD = "";
   int b = 0;
+  /*
   for (int i = 0; i < strlen(myDate); i++)
   {
     if (myDate[i] == '/')
@@ -3384,6 +3410,15 @@ void generateFileName()
   if (indexName < 5)
   {
     fileName[indexName++] = 'T';
+  }
+
+  */
+  fileName[indexName++] = 'T';
+  String str = String(totalNumberFile);
+  // Add to file name
+  for (int i = 0; i < str.length(); i++)
+  {
+    fileName[indexName++] = str[i];
   }
   // Add file extension
   strcat(fileName, ".txt");
@@ -3473,4 +3508,28 @@ void torqueOnEventChange(bool state)
     String message = "TORQUE=" + String(state ? "ON" : "OFF");
     appendFile(fileName, message.c_str());
   }
+}
+
+uint32_t getTotalNumberOfFiles()
+{
+  uint32_t totalFiles = 0;
+  File root = SD.open("/");
+  while (true)
+  {
+    File entry = root.openNextFile();
+    if (!entry)
+    {
+      // no more files
+      break;
+    }
+    if (entry.isDirectory())
+    {
+      // skip directories
+      continue;
+    }
+    totalFiles++;
+    entry.close();
+  }
+  root.close();
+  return totalFiles;
 }
