@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-byte macId[] = { 0xDE, 0xAD, 0xBD, 0xEF, 0xFE, 0xED };
+// byte macId[] = { 0xDE, 0xAD, 0xBD, 0xEF, 0xFE, 0xED };
 // IPAddress ip(10, 192, 13, 173);        // IP of Arduino
 // IPAddress gateway(10, 192, 13, 254);   // Gateway
 // IPAddress subnet(255, 255, 255, 0);    // Subnet mask
@@ -12,9 +12,7 @@ IPAddress ip(192, 168, 137, 19);          // IP of Arduino
 IPAddress gateway(192, 168, 137, 1);     // Gateway
 IPAddress subnet(255, 255, 255, 0);      // Subnet mask
 IPAddress primaryDNS(192, 168, 137, 1);    // DNS server
-// IPAddress server(192, 168, 137, 17);
 
-#define ETH_CS 53
 #define MQTT_MAX_PACKET_SIZE 512
 int MQTT_PORT = 1883;
 
@@ -92,7 +90,7 @@ void setup() {
   Serial.begin(115200);
   // Serial.println("Startd");
   WiFi.begin(ssid, password);
-  WiFi.config(ip, gateway, subnet, primaryDNS);
+  // WiFi.config(ip, gateway, subnet, primaryDNS);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
