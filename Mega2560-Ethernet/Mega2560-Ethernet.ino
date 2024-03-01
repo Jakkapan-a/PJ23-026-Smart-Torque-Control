@@ -140,7 +140,7 @@ int indexCharNumber = 0;
 
 boolean isAllowMES, oldIsAllowMes = false;
 
-uint8_t isByPass = false;
+uint8_t isByPass = 2;
 boolean selectBuyPass = false;
 // -------------------- MODEL -------------------- //
 String model = "";
@@ -450,7 +450,7 @@ void setup()
   
   isByPass = readInt8InEEPROM(16);
 
-  selectBuyPass = isByPass > 1 ? true : false;
+  // selectBuyPass = isByPass > 1 ? true : false;
   
   isAllowMES = false;
   LED_Controls(0);
@@ -2101,7 +2101,7 @@ void btnEnterOnEventPressed()
   // By pass
   else if (selectMenu == 8 && selectSubMenu == 0)
   {
-    selectSubMenu = 1;
+    selectSubMenu = isByPass == 1 ? 1 : 2;
   }
   else if (selectMenu == 8 && selectSubMenu > 0)
   {
@@ -2117,7 +2117,7 @@ void btnEnterOnEventPressed()
     }else if (selectSubMenu == 2)
     {
       // 
-      isByPass = 0;
+      isByPass = 2;
       // Save to EEPROM
       updateEEPROM(16, isByPass);
       // Read EEPROM
@@ -2707,7 +2707,7 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2)
     line1 = " DATE:" + String(myDate);
     line2 = ">TIME:" + String(myTime);
   }else if(_selectMenu == 8){
-    line1 = ">BY PASS";
+    line1 = ">CENSOR :"+String(isByPass == 1 ? "ON" : "OFF");
     line2 = "  ";
   }
   else if (_selectMenu > 8)
@@ -3260,13 +3260,13 @@ void byPassMenuPage(int &selectSubMenu, String &line1, String &line2)
 
   if (selectSubMenu == 1)
   {
-    line1 = ">BY PASS";
-    line2 = " NOT PASS";
+    line1 = ">ON";
+    line2 = " OFF";
   }
   else if (selectSubMenu == 2)
   {
-    line1 = " BY PASS";
-    line2 = ">NOT PASS";
+    line1 = " ON";
+    line2 = ">OFF";
   }
   else if (selectSubMenu > 2)
   {
