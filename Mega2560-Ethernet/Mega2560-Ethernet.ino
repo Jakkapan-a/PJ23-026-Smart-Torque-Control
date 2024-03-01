@@ -4,7 +4,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
 #include <SPI.h>
-#include <SD.h>
+// #include <SD.h>
 #include "DS1302.h"
 
 DS1302 rtc(2, 3, 4); // RST, DAT, CLK
@@ -140,8 +140,10 @@ int indexCharNumber = 0;
 
 boolean isAllowMES, oldIsAllowMes = false;
 
+uint8_t isByPass = false;
+boolean selectBuyPass = false;
+// -------------------- MODEL -------------------- //
 String model = "";
-
 String modelSetName = "";
 int indexModelName = 0;      // Index edit model name
 uint8_t lengthNameModel = 5; // 5 Digit
@@ -409,7 +411,7 @@ void setup()
   lcd.begin();
   lcd.clear();
   Serial.println("START");
-  checkSDCard();
+  // checkSDCard();
   updateLCD("SD Card", "Completed");
 
   tickerUnlockJig.off();
@@ -446,6 +448,9 @@ void setup()
   stdMin = getMin(addressModel[indexSelectionModel]);
   stdMax = getMax(addressModel[indexSelectionModel]);
   
+  isByPass = readInt8InEEPROM(16);
+
+  selectBuyPass = isByPass > 1 ? true : false;
   
   isAllowMES = false;
   LED_Controls(0);
@@ -506,32 +511,13 @@ void mainFunction()
     timeComplete = millis() - timeStart;
     countScrew++;
 
-    if (statusServer)
-    {
-      String data = "S1_TIME_COMPLETE:" + String(timeComplete);
-      data += ",S1_SCW_COUNT:" + String(countScrew);
-      data += ",S1_SCW_TOTAL:" + String(countScrewMax);
-      data += ",S1_TEST:" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
-      Serial3.println("$PUB=" + data + "#");
-
+      String data = "";
       data = "TIME_COMPLETE=" + String(timeComplete);
-      data += ",SCW_COUNT=" + String(countScrew);
-      data += ",SCW_TOTAL=" + String(countScrewMax);
-      data += ",TEST=" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
+      data += "\nSCW_COUNT=" + String(countScrew) +"/"+ String(countScrewMax);
+      // data += "\nSCW_TOTAL=" + String(countScrewMax);
+      data += "\nTEST=" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
 
-      // Save data to SD Card
-      appendFile(fileName, data.c_str());
-    }
-    else
-    {
-      String data = "TIME_COMPLETE=" + String(timeComplete);
-      data += ",SCW_COUNT=" + String(countScrew);
-      data += ",SCW_TOTAL=" + String(countScrewMax);
-      data += ",TEST=" + String(timeComplete > stdMin && timeComplete < stdMax ? "PASS" : "NG");
-
-      // Save data to SD Card
-      appendFile(fileName, data.c_str());
-    }
+      Serial3.println("$WRITE=" + data + "#");
     // Check time is inside range min and max
     if (timeComplete >= stdMin && timeComplete <= stdMax)
     {
@@ -573,7 +559,7 @@ void mainFunction()
   }
 
   if(isReadNumberFile == true){
-    totalNumberFile = getTotalNumberOfFiles();
+    // totalNumberFile = getTotalNumberOfFiles();
     isReadNumberFile = false;
   }
   if (pressUnlockJigCountDown > 0 && pressUnlockJig == 2)
@@ -590,7 +576,8 @@ void mainFunction()
 
       String data = "SW_KEY=SCW_KEY";
       // Save data to SD Card
-      appendFile(fileName, data.c_str());
+      // appendFile(fileName, data.c_str());
+      Serial3.println("$WRITE=" + data + "#");
     }
   }
   unsigned long currentMillis = millis();
@@ -724,7 +711,7 @@ void mainFunction()
   {
     clockDate();
     if(!stateStart){
-      checkSDCard();
+      // checkSDCard();
     }
     // reSetupETHInfo();
     CountUpCommunication++;
@@ -817,6 +804,7 @@ void mainFunction()
   }
 }
 
+/*
 void checkSDCard()
 {
   // loop if SD card is not present
@@ -838,7 +826,7 @@ void checkSDCard()
 
   isReadNumberFile = true;
 }
-
+*/
 void clockDate()
 {
   char *p = rtc.getDateStr(FORMAT_LONG, FORMAT_LITTLEENDIAN, '/');
@@ -1074,6 +1062,7 @@ void updateLCD(const String newDataLine1, const String newDataLine2)
 {
   updateLCD(newDataLine1.c_str(), newDataLine2.c_str());
 }
+
 void updateLCD(const char *newDataLine1, const char *newDataLine2)
 {
   updateLCDLine(newDataLine1, currentLine1, 0);
@@ -1200,7 +1189,8 @@ void btnStartOnEventChange(bool state)
     {
       String data = "START=" + String(timeStart);
       // Save data to SD Card
-      appendFile(fileName, data.c_str());
+      // appendFile(fileName, data.c_str());
+      Serial3.println("$WRITE:" + data + "#");
     }
   }
   else
@@ -1219,7 +1209,8 @@ void btnStopOnEventChange(bool state)
   {
      String data = "STOP=" + String(millis());
       // Save data to SD Card
-      appendFile(fileName, data.c_str());
+      // appendFile(fileName, data.c_str());
+      Serial3.println("$WRITE:" + data + "#");
     if (statusServer)
     {
       Serial3.println("$PUB=S1_T_STOP:ON#");
@@ -1262,8 +1253,8 @@ void btnCensorOnStOnEventChange(bool state)
     status_test = TESTING;
 
     // GenerateFileName
-    generateFileName();
-
+    // generateFileName();
+    Serial3.println("$NEW_FILE#");
     // Serial.print("File name: ");
     // Serial.println(fileName);
 
@@ -1283,19 +1274,22 @@ void btnCensorOnStOnEventChange(bool state)
       data += ",S1_FILE_ID:" + String(fileName);
       Serial3.println("$PUB=" + data + "#");
     }
-
+    delayMicroseconds(2);
     String data = "MODEL=" + model;
-    data += "\nID=" + id;
-    // data += "\nIP=" + String(IP[0]) + "." + String(IP[1]) + "." + String(IP[2]) + "." + String(IP[3]);
-    // appendFile
-    appendFile(fileName, data.c_str());
+    Serial3.println("$WRITE:" + data + "#");
+    data = "ID=" + id;
+    Serial3.println("$WRITE:" + data + "#");
 
     data = "DATE_TIME=" + String(myDate) + " " + String(myTime);
-    data += "\nSTD_MIN=" + String(stdMin);
-    data += "\nSTD_MAX=" + String(stdMax);
-    data += "\nCOUNT=" + String(countScrewMax);
+    Serial3.println("$WRITE:" + data + "#");
+    data = "STD_MIN=" + String(stdMin);
+    Serial3.println("$WRITE:" + data + "#");
+    data = "\nSTD_MAX=" + String(stdMax);
+    Serial3.println("$WRITE:" + data + "#");
+    data = "\nCOUNT=" + String(countScrewMax);
+    Serial3.println("$WRITE:" + data + "#");
 
-    appendFile(fileName, data.c_str());
+    // appendFile(fileName, data.c_str());
   }
   // MES OFF
   isAllowMES = false;
@@ -1761,6 +1755,15 @@ void btnUpOnEventPressed()
           indexCharNumber = 0;
         }
       }
+  } 
+  // By Pass
+  if(selectMenu == 8 && selectSubMenu > 0)
+  {
+    selectSubMenu++;
+    if (selectSubMenu > 2)
+    {
+      selectSubMenu = 1;
+    }
   }
   else if (selectSubMenu1 > 0)
   {
@@ -1924,6 +1927,16 @@ void btnDownOnEventPressed()
       }
     }
   }
+
+  // By pass 
+  else if(selectMenu == 8 && selectSubMenu > 0)
+  {
+    selectSubMenu--;
+    if (selectSubMenu < 1)
+    {
+      selectSubMenu = 2;
+    }
+  }
   else if (selectSubMenu1 > 0)
   {
     selectSubMenu1++;
@@ -2032,15 +2045,6 @@ void btnEnterOnEventPressed()
       // Load MAC from EEPROM
       getMac(MAC_Address, MAC);
       indexIP = 0;
-#if 0
-      Serial.print("Load MAC from EEPROM: ");
-      Serial.println(String(MAC[0], HEX));
-      Serial.println(String(MAC[1], HEX));
-      Serial.println(String(MAC[2], HEX));
-      Serial.println(String(MAC[3], HEX));
-      Serial.println(String(MAC[4], HEX));
-      Serial.println(String(MAC[5], HEX));
-#endif
     }
     // GATEWAY
     else if (selectSubMenu == 4)
@@ -2048,13 +2052,6 @@ void btnEnterOnEventPressed()
       // Load MAC from EEPROM
       getIP(GATEWAY_Address, GATEWAY);
       indexIP = 0;
-#if 0
-      Serial.print("Load GATEWAY from EEPROM: ");
-      Serial.println(String(GATEWAY[0], DEC));
-      Serial.println(String(GATEWAY[1], DEC));
-      Serial.println(String(GATEWAY[2], DEC));
-      Serial.println(String(GATEWAY[3], DEC));
-#endif
     }
     // SUBNET
     else if (selectSubMenu == 5)
@@ -2062,13 +2059,6 @@ void btnEnterOnEventPressed()
       // Load MAC from EEPROM
       getIP(SUBNET_Address, SUBNET);
       indexIP = 0;
-#if 0
-      Serial.print("Load SUBNET from EEPROM: ");
-      Serial.println(String(SUBNET[0], DEC));
-      Serial.println(String(SUBNET[1], DEC));
-      Serial.println(String(SUBNET[2], DEC));
-      Serial.println(String(SUBNET[3], DEC));
-#endif
     }
     // DNS
     else if (selectSubMenu == 6)
@@ -2076,13 +2066,7 @@ void btnEnterOnEventPressed()
       // Load from EEPROM
       getIP(DNS_Address, DNS);
       indexIP = 0;
-#if 0
-      Serial.print("Load DNS from EEPROM: ");
-      Serial.println(String(DNS[0], DEC));
-      Serial.println(String(DNS[1], DEC));
-      Serial.println(String(DNS[2], DEC));
-      Serial.println(String(DNS[3], DEC));
-#endif
+
     }
     // IP SERVER
     else if (selectSubMenu == 7)
@@ -2090,13 +2074,7 @@ void btnEnterOnEventPressed()
       // Load from EEPROM
       getIP(IP_SERVER_Address, IP_SERVER);
       indexIP = 0;
-#if 0
-      Serial.print("Load IP SERVER from EEPROM: ");
-      Serial.println(String(IP_SERVER[0], DEC));
-      Serial.println(String(IP_SERVER[1], DEC));
-      Serial.println(String(IP_SERVER[2], DEC));
-      Serial.println(String(IP_SERVER[3], DEC));
-#endif
+
     }
     // PORT
     else if (selectSubMenu == 8)
@@ -2105,10 +2083,7 @@ void btnEnterOnEventPressed()
       SERVER_PORT_MQTT = readInt16CInEEPROM(SERVER_PORT_MQTT_Address);
       indexNumber = 0;
       resetIndex(lettersNumber, indexCharNumber, indexNumber, ConvertNumberToString(SERVER_PORT_MQTT));
-#if 0
-      Serial.print("Load PORT from EEPROM: ");
-      Serial.println(SERVER_PORT_MQTT);
-#endif
+
     }
   }
   else if (selectMenu == 2 && selectSubMenu > 0 && selectSubMenu1 > 0)
@@ -2123,6 +2098,39 @@ void btnEnterOnEventPressed()
     EnterSetIPServer();
     EnterSetPort();
   }
+  // By pass
+  else if (selectMenu == 8 && selectSubMenu == 0)
+  {
+    selectSubMenu = 1;
+  }
+  else if (selectMenu == 8 && selectSubMenu > 0)
+  {
+    // save to EEPROM
+    if (selectSubMenu == 1)
+    {
+      // 
+      isByPass = 1;
+      // Save to EEPROM
+      updateEEPROM(16, isByPass);
+      // Read EEPROM
+      isByPass = readInt8InEEPROM(16);
+    }else if (selectSubMenu == 2)
+    {
+      // 
+      isByPass = 0;
+      // Save to EEPROM
+      updateEEPROM(16, isByPass);
+      // Read EEPROM
+      isByPass = readInt8InEEPROM(16);
+    }
+
+    selectSubMenu = 0;
+
+    // Display
+    updateLCD("Save...........", "               ");
+    delay(1000);
+  }
+
 }
 
 void EnterSetName()
@@ -2641,10 +2649,19 @@ void settingMenu()
   {
     systemMenuPage(selectSubMenu, line1, line2);
   }
+  // --------------------------------- By pass ------------------------- //
+  else if (selectMenu == 8 && selectSubMenu > 0)
+  {
+    byPassMenuPage(selectSubMenu, line1, line2);
+  }
+
   else if (selectSubMenu == 0)
   {
     selectMenuPage(selectMenu, line1, line2);
   }
+
+
+
   updateLCD(line1, line2);
 }
 
@@ -2689,23 +2706,17 @@ void selectMenuPage(int &_selectMenu, String &line1, String &line2)
   {
     line1 = " DATE:" + String(myDate);
     line2 = ">TIME:" + String(myTime);
+  }else if(_selectMenu == 8){
+    line1 = ">BY PASS";
+    line2 = "  ";
   }
-  else if (_selectMenu > 7)
+  else if (_selectMenu > 8)
   {
     _selectMenu = 0;
   }
   else if (_selectMenu < 0)
   {
-    _selectMenu = 7;
-  }
-
-  else if (_selectMenu > 5)
-  {
-    _selectMenu = 0;
-  }
-  else if (_selectMenu < 0)
-  {
-    _selectMenu = 5;
+    _selectMenu = 8;
   }
 }
 
@@ -3188,6 +3199,7 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2)
       }
     }
   }
+
   else if (selectSubMenu == 1)
   {
     line1 = ">ID: " + id;
@@ -3238,6 +3250,35 @@ void systemMenuPage(int &selectSubMenu, String &line1, String &line2)
   }
 }
 
+void byPassMenuPage(int &selectSubMenu, String &line1, String &line2)
+{
+  // selectBuyPass == true => line1 = ">BY PASS" 
+  // selectBuyPass == false => line2 = " NOT PASS"
+
+  // selectBuyPass == true => line1 = " BY PASS" 
+  // selectBuyPass == false => line2 = ">NOT PASS"
+
+  if (selectSubMenu == 1)
+  {
+    line1 = ">BY PASS";
+    line2 = " NOT PASS";
+  }
+  else if (selectSubMenu == 2)
+  {
+    line1 = " BY PASS";
+    line2 = ">NOT PASS";
+  }
+  else if (selectSubMenu > 2)
+  {
+    selectSubMenu = 1;
+  }
+  else if (selectSubMenu < 1)
+  {
+    selectSubMenu = 2;
+  }
+  selectBuyPass = selectSubMenu == 1 ? true : false;
+  
+}
 void indexIpCal(uint8_t ip[], uint8_t index_input, uint8_t &index_output)
 {
   //  check index_input
@@ -3343,76 +3384,6 @@ void generateFileName()
   int indexName = 0;
   // Clear file
   memset(fileName, 0, FILE_NAME_SIZE);
-  // fileName[indexName++] = 'T';
-  // Get date
-  int n = 0; // xx/xx/xxxx
-  // Year last 2 digits
-  int digitYear = 0;
-  String strD = "";
-  int b = 0;
-  /*
-  for (int i = 0; i < strlen(myDate); i++)
-  {
-    if (myDate[i] == '/')
-    {
-      b++;
-    }
-    else if (b == 2 && digitYear < 2)
-    {
-      digitYear++;
-      continue;
-    }
-
-    if (myDate[i] != '/')
-    {
-      n++;
-      strD += myDate[i];
-      if (n == 2)
-      {
-        int num = strD.toInt();
-        if (num < 10)
-        {
-          fileName[indexName++] = char(num + 48);
-        }
-        else
-        {
-          fileName[indexName++] = _letters[num - 10];
-        }
-        strD = "";
-        n = 0;
-      }
-    }
-  }
-  strD = "";
-  // Get time
-  for (int i = 0; i < strlen(myTime); i++)
-  {
-    if (myTime[i] != ':')
-    {
-      n++;
-      strD += myTime[i];
-      if (n == 2)
-      {
-        int num = strD.toInt();
-        if (num < 10)
-        {
-          fileName[indexName++] = char(num + 48);
-        }
-        else
-        {
-          fileName[indexName++] = _letters[num - 10];
-        }
-        strD = "";
-        n = 0;
-      }
-    }
-  }
-  if (indexName < 5)
-  {
-    fileName[indexName++] = 'T';
-  }
-
-  */
   fileName[indexName++] = 'T';
   String str = String(totalNumberFile);
   // Add to file name
@@ -3429,60 +3400,40 @@ void generateFileName()
   Serial.println("");
 }
 
-String decodeFileName(const char *filename)
-{
-  String str = "";
-  for (int i = 0; i < strlen(filename); i++)
-  {
-    if (filename[i] >= 48 && filename[i] <= 57)
-    {
-      str += filename[i];
-    }
-    else if (filename[i] >= 65 && filename[i] <= 90)
-    {
-      str += String(filename[i] - 55);
-    }
-    else if (filename[i] >= 97 && filename[i] <= 122)
-    {
-      str += String(filename[i] - 61);
-    }
-  }
-  return str;
-}
 
-void readSDCard(const char *filename)
-{
-  // Open file for reading data and BASE_PATH
-  File file = SD.open(filename);
-  if (file)
-  {
-    Serial.println("Read from file:");
-    while (file.available())
-    {
-      Serial.write(file.read());
-    }
-    file.close();
-  }
-  else
-  {
-    Serial.println("Failed to open file for reading");
-  }
-}
+// void readSDCard(const char *filename)
+// {
+//   // Open file for reading data and BASE_PATH
+//   File file = SD.open(filename);
+//   if (file)
+//   {
+//     Serial.println("Read from file:");
+//     while (file.available())
+//     {
+//       Serial.write(file.read());
+//     }
+//     file.close();
+//   }
+//   else
+//   {
+//     Serial.println("Failed to open file for reading");
+//   }
+// }
 
-void appendFile(const char *filename, const char *message)
-{
-  // Open file for appending data
-  File file = SD.open(filename, FILE_WRITE);
-  if (file)
-  {
-    file.println(message);
-    file.close();
-  }
-  else
-  {
-    Serial.println("Failed to open file for appending");
-  }
-}
+// void appendFile(const char *filename, const char *message)
+// {
+//   // Open file for appending data
+//   File file = SD.open(filename, FILE_WRITE);
+//   if (file)
+//   {
+//     file.println(message);
+//     file.close();
+//   }
+//   else
+//   {
+//     Serial.println("Failed to open file for appending");
+//   }
+// }
 
 void lockJigOnEventChange(bool state)
 {
@@ -3494,7 +3445,8 @@ void lockJigOnEventChange(bool state)
   else
   {
     String message = state ? "JIG=LOCK" : "JIG=UNLOCK";
-    appendFile(fileName, message.c_str());
+    // appendFile(fileName, message.c_str());
+    Serial3.println("$WRITE=" + message + "#");
   }
 }
 void torqueOnEventChange(bool state)
@@ -3506,30 +3458,31 @@ void torqueOnEventChange(bool state)
   else
   {
     String message = "TORQUE=" + String(state ? "ON" : "OFF");
-    appendFile(fileName, message.c_str());
+    // appendFile(fileName, message.c_str());
+    Serial3.println("$WRITE=" + message + "#");
   }
 }
 
-uint32_t getTotalNumberOfFiles()
-{
-  uint32_t totalFiles = 0;
-  File root = SD.open("/");
-  while (true)
-  {
-    File entry = root.openNextFile();
-    if (!entry)
-    {
-      // no more files
-      break;
-    }
-    if (entry.isDirectory())
-    {
-      // skip directories
-      continue;
-    }
-    totalFiles++;
-    entry.close();
-  }
-  root.close();
-  return totalFiles;
-}
+// uint32_t getTotalNumberOfFiles()
+// {
+//   uint32_t totalFiles = 0;
+//   File root = SD.open("/");
+//   while (true)
+//   {
+//     File entry = root.openNextFile();
+//     if (!entry)
+//     {
+//       // no more files
+//       break;
+//     }
+//     if (entry.isDirectory())
+//     {
+//       // skip directories
+//       continue;
+//     }
+//     totalFiles++;
+//     entry.close();
+//   }
+//   root.close();
+//   return totalFiles;
+// }
