@@ -451,7 +451,9 @@ void setup()
   isByPass = readInt8InEEPROM(16);
 
   // selectBuyPass = isByPass > 1 ? true : false;
-  
+  if(isByPass == 2){
+    torque.on();
+  }
   isAllowMES = false;
   LED_Controls(0);
 
@@ -509,8 +511,11 @@ void mainFunction()
     stateStart = false;
     stateStop = false;
     timeComplete = millis() - timeStart;
-    countScrew++;
+    if(isByPass != 2){
+      countScrew++;
+    }
 
+    // delayMilliseconds(100);
       String data = "";
       data = "TIME_COMPLETE=" + String(timeComplete);
       data += "\nSCW_COUNT=" + String(countScrew) +"/"+ String(countScrewMax);
@@ -584,7 +589,6 @@ void mainFunction()
   // -------------------- Debounce 10 ms ------------------ //
   if (currentMillis - lastDebounceTime > 10)
   {
-
     if (currentStateUp)
     {
       if (countPressUp > pressTime)
@@ -650,7 +654,9 @@ void mainFunction()
     }
     else if (indexMenu == 1)
     {
-      torque.off();
+      if(isByPass != 2){
+        torque.off();
+      }
       settingMenu();
     }
     // ----- MENU 2 ----- //
@@ -1176,7 +1182,10 @@ void btnStartOnEventChange(bool state)
   }
   else if (status_test == PASS || status_test == NG || countScrew >= countScrewMax)
   {
-    torque.off();
+    if(isByPass != 2){
+      // lockJig.off();
+      torque.off();
+      }
   }
 
   if (stateStart)
@@ -1237,10 +1246,11 @@ void btnCensorOnStOnEventChange(bool state)
     timeComplete = 0;
     LED_Controls(0);
     // Serial.println("--------LED OFF SENSOR ----------");
-    lockJig.off();
-    torque.off();
-    countLockJig = 0;
-
+    if(isByPass != 2){
+      lockJig.off();
+      torque.off();
+      countLockJig = 0;
+    }
     if (statusServer)
     {
       Serial3.println("$PUB=S1_STATION:OFF#");
@@ -1284,9 +1294,9 @@ void btnCensorOnStOnEventChange(bool state)
     Serial3.println("$WRITE:" + data + "#");
     data = "STD_MIN=" + String(stdMin);
     Serial3.println("$WRITE:" + data + "#");
-    data = "\nSTD_MAX=" + String(stdMax);
+    data = "STD_MAX=" + String(stdMax);
     Serial3.println("$WRITE:" + data + "#");
-    data = "\nCOUNT=" + String(countScrewMax);
+    data = "COUNT=" + String(countScrewMax);
     Serial3.println("$WRITE:" + data + "#");
 
     // appendFile(fileName, data.c_str());
@@ -1299,8 +1309,10 @@ void btnScwKeyOnEventChange(bool state)
 {
   if (!state)
   {
-    lockJig.off();
-    torque.off();
+    if(isByPass != 2){
+      lockJig.off();
+      torque.off();
+    }
     countLockJig = 0;
     countUnlockJig = 0;
     ngToneCount = 0; // Reset ng tone
