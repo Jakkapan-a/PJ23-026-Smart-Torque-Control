@@ -107,10 +107,11 @@ String extractData(String data, String key) {
   }
 
   int startIndex = keyIndex + key.length();      // Start index for the number
-  int endIndex = data.indexOf(",", startIndex);  // Find the next comma after the key
-  if (endIndex == -1) {
-    endIndex = data.length();  // If no comma, assume end of string
-  }
+  // int endIndex = data.indexOf(",", startIndex);  // Find the next comma after the key
+  // if (endIndex == -1) {
+  // }
+  
+  endIndex = data.length();  // If no comma, assume end of string
 
   String valueStr = data.substring(startIndex, endIndex);  // Extract the substring
   return valueStr;                                         // Convert to float and return

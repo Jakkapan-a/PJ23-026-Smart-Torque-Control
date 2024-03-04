@@ -287,11 +287,10 @@ void serialEvent()
 // -------------------- SERIAL 1 -------------------- //
 bool startReceived1 = false;
 bool endReceived1 = false;
-const byte startChar1 = 0x02;
-const byte endChar1 = 0x03;
+const char startChar1 = '$';
+const char endChar1 = '#';
 // String inputString1 = "";
 char inputString1[BUFFER_SIZE_DATA];
-byte inputByte1[BUFFER_SIZE_DATA];
 int inputStringLength1 = 0;
 void serialEvent1()
 {
@@ -308,13 +307,11 @@ void serialEvent1()
     {
       endReceived1 = true;
     }
-
-    if (startReceived1)
+    else if (startReceived1)
     {
       if (inputStringLength1 < BUFFER_SIZE_DATA - 1)
       {
         inputString1[inputStringLength1++] = inChar;
-        inputByte1[inputStringLength1] = inChar;
       }
       else
       {
@@ -2453,6 +2450,7 @@ void EnterSetSubnet()
       {
         updateEEPROM(SUBNET_Address + i, SUBNET[i]);
       }
+      // Read EEPROM
       delay(1000);
       selectSubMenu1 = 0;
       selectSubMenu2 = 0;
