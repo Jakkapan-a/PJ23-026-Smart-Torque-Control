@@ -1,51 +1,91 @@
+/**
+ * @file LEO-HUB.ino
+ * @author Jakkapan
+ * @brief
+ * @version 0.1
+ * @date 2024-03-05
+ * Arduino leonardo board
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
 #include <TcBUTTON.h>
 #include <TcPINOUT.h>
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+// #include <LiquidCrystal_I2C.h>
 #include "Keyboard.h"
 
-
 // // -------------------- INPUT -------------------- //
-#define BTN_START 11
-void btnStartOnEventChange(bool state);
-TcBUTTON btnStart(BTN_START, false);
+// #define BTN_START 11
+// void btnStartOnEventChange(bool state);
+// TcBUTTON btnStart(BTN_START, false);
 
-#define BTN_STOP 12
-void btnStopOnEventChange(bool state);
-TcBUTTON btnStop(BTN_STOP, false);
+// #define BTN_STOP 12
+// void btnStopOnEventChange(bool state);
+// TcBUTTON btnStop(BTN_STOP, false);
 
-#define BTN_ESC_PIN A0
-void btnEscOnEventChange(bool state);
-TcBUTTON btnEsc(BTN_ESC_PIN, false);
+// #define BTN_ESC_PIN A0
+// void btnEscOnEventChange(bool state);
+// TcBUTTON btnEsc(BTN_ESC_PIN, false);
 
-#define BTN_UP_PIN A1
-void btnUpOnEventChange(bool state);
-TcBUTTON btnUp(BTN_UP_PIN, false);
+// #define BTN_UP_PIN A1
+// void btnUpOnEventChange(bool state);
+// TcBUTTON btnUp(BTN_UP_PIN, false);
 
-#define BTN_DOWN_PIN A2
-void btnDownOnEventChange(bool state);
-TcBUTTON btnDown(BTN_DOWN_PIN, false);
+// #define BTN_DOWN_PIN A2
+// void btnDownOnEventChange(bool state);
+// TcBUTTON btnDown(BTN_DOWN_PIN, false);
 
-#define BTN_ENTER_PIN A3
-void btnEnterOnEventChange(bool state);
-TcBUTTON btnEnter(BTN_ENTER_PIN, false);
+// #define BTN_ENTER_PIN A3
+// void btnEnterOnEventChange(bool state);
+// TcBUTTON btnEnter(BTN_ENTER_PIN, false);
+
+// // ---------------------- OUTPUT ---------------------- //
+// #define IO_OUT_MES_PIN 4
+// void ledMesOnEventChange(bool state);
+// TcPINOUT ledMes(IO_OUT_MES_PIN, false);
+
+// #define IO_OUT_PWR_PIN 5 // Power torque
+// void ledPwrOnEventChange(bool state);
+// TcPINOUT ledPwr(IO_OUT_PWR_PIN, false);
+
+// #define IO_OUT_RED_PIN 7
+// void ledRedOnEventChange(bool state);
+// TcPINOUT ledRed(IO_OUT_RED_PIN, false);
+
+// #define IO_OUT_GREEN_PIN 8
+// void ledGreenOnEventChange(bool state);
+// TcPINOUT ledGreen(IO_OUT_GREEN_PIN, false);
+
+// #define IO_OUT_BLUE_PIN 9 // Blue or Yellow
+// void ledBlueOnEventChange(bool state);
+// TcPINOUT ledBlue(IO_OUT_BLUE_PIN, false);
+
+// #define IO_OUT_LOG_JIG_PIN 10
+// void ledLogJigOnEventChange(bool state);
+// TcPINOUT ledLogJig(IO_OUT_LOG_JIG_PIN, false);
 
 #define BUZZER_PIN 6
 uint8_t passToneCount = 0;
 uint32_t lastTimeTonePASS = 0;
-
 uint8_t ngToneCount = 0;
 uint32_t lastTimeToneNG = 0;
 
-#define BUFFER_SIZE_DATA 255
+bool isMenuSetting = false;
+
+// -------------------- FUNCTION -------------------- //
+#define BUFFER_SIZE_DATA 100
 // -------------------- LCD -------------------- //
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+// LiquidCrystal_I2C lcd(0x27, 16, 2);
 // -------------------- SERIAL  -------------------- //
 boolean startReceived = false;
 boolean endReceived = false;
 
 const char startChar = '$';
 const char endChar = '#';
+
+int stdMin, stdMax, scw_count,scw_c = 0;
+String name = "";
 // String inputString = "";
 char inputString[BUFFER_SIZE_DATA];
 int inputStringLength = 0;
@@ -78,6 +118,16 @@ void serialEvent()
     }
   }
 }
+
+enum STATUS_TEST
+{
+  PASS,
+  NG,
+  TESTING,
+  NO_TEST,
+  STOP
+};
+STATUS_TEST status_test = NO_TEST;
 
 // -------------------- SERIAL 1 -------------------- //
 bool startReceived1 = false;
@@ -123,15 +173,23 @@ void serialEvent1()
       }
     }
     // ----------------- BYTE ----------------- //
-    if(inChar == startByte1){
+    if (inChar == startByte1)
+    {
       startReceivedByte1 = true;
       inputByteLength1 = 0;
-    }else if(startReceivedByte1 && inChar == endByte1){
+    }
+    else if (startReceivedByte1 && inChar == endByte1)
+    {
       endReceivedByte1 = true;
-    }else if(startReceivedByte1){
-      if(inputByteLength1 < BUFFER_SIZE_DATA - 1){
+    }
+    else if (startReceivedByte1)
+    {
+      if (inputByteLength1 < BUFFER_SIZE_DATA - 1)
+      {
         inputByte1[inputByteLength1++] = inChar;
-      }else{
+      }
+      else
+      {
         startReceivedByte1 = false;
         endReceivedByte1 = false;
         inputByteLength1 = 0;
@@ -139,7 +197,6 @@ void serialEvent1()
     }
   }
   // Serial.println("");
-  
 }
 
 bool startReceivedI2c = false;
@@ -150,14 +207,16 @@ char inputStringI2c[BUFFER_SIZE_DATA];
 int inputStringLengthI2c = 0;
 
 // -------------------- I2C -------------------- //
-void receiveEvent(int howMany) {
+void receiveEvent(int howMany)
+{
   // while (1 < Wire.available()) { // Loop through all but the last
   //   char c = Wire.read(); // Receive byte as a character
   //   Serial.print(c);      // Print the character to the serial monitor
   // }
   // char x = Wire.read();    // Receive byte as an integer
   // Serial.println(x);      // Print the integer to the serial monitor
-  while (Wire.available()) { // loop through all but the last
+  while (Wire.available())
+  { // loop through all but the last
     char inChar = (char)Wire.read();
     if (inChar == startCharI2c)
     {
@@ -183,17 +242,20 @@ void receiveEvent(int howMany) {
     }
   }
 }
+bool isModeDisplay = false;
 
-void requestEvent() {
+void requestEvent()
+{
   Wire.write("hello "); // Respond with a message of 6 characters
 }
- 
-void setup() {
 
-  lcd.begin();
-  lcd.clear();
-  lcd.backlight();
-  Wire.begin(0x74); // Set the Arduino I2C address to 0x04
+void setup()
+{
+
+  // lcd.begin();
+  // lcd.clear();
+  // lcd.backlight();
+  Wire.begin(0x74);             // Set the Arduino I2C address to 0x04
   Wire.onReceive(receiveEvent); // Register a receive event handler
   Wire.onRequest(requestEvent); // Register a request event handler
   // Initialize serial communication at 9600 baud rate
@@ -206,49 +268,77 @@ void setup() {
   memset(inputByte1, 0, BUFFER_SIZE_DATA);
 
   Keyboard.begin();
-  updateLCD("Starting...", "Please wait....");
-  btnStart.OnEventChange(btnStartOnEventChange);
-  btnStop.OnEventChange(btnStopOnEventChange);
-  btnEsc.OnEventChange(btnEscOnEventChange);
-  btnUp.OnEventChange(btnUpOnEventChange);
-  btnDown.OnEventChange(btnDownOnEventChange);
-  btnEnter.OnEventChange(btnEnterOnEventChange);
+  //updateLCD("Starting...", "Please wait....");
+  // btnStart.OnEventChange(btnStartOnEventChange);
+  // btnStart.DebounceDelay(10); // 10ms
+
+  // btnStop.OnEventChange(btnStopOnEventChange);
+  // btnStop.DebounceDelay(10); // 10ms
+
+  // btnEsc.OnEventChange(btnEscOnEventChange);
+  // btnUp.OnEventChange(btnUpOnEventChange);
+  // btnDown.OnEventChange(btnDownOnEventChange);
+  // btnEnter.OnEventChange(btnEnterOnEventChange);
+
+  // ledLogJig.setCallback(ledLogJigOnEventChange);
+  // ledMes.setCallback(ledMesOnEventChange);
+  // ledPwr.setCallback(ledPwrOnEventChange);
+  // ledRed.setCallback(ledRedOnEventChange);
+  // ledGreen.setCallback(ledGreenOnEventChange);
+  // ledBlue.setCallback(ledBlueOnEventChange);
+
   passToneCount = 2;
   delay(1000);
   Serial.print("START");
-  Serial1.println("$ON:START#");
+  Serial1.println("$PWR:ON#");
 }
 uint32_t previousMillis = 0;
-uint32_t i = 0;
-void loop() 
+uint32_t timeStart, timeComplete = 0;
+
+boolean stateStart, stateStop = false;
+boolean stateLockJig = false;
+int countLockJig = 0;
+int countUnlockJig = 0;
+const int countLockJigMax = 3;
+boolean stateCensorOnStation = false;
+void loop()
 {
-  //_serialEvent();
-  //_serialEvent1();
   manageSerial();
   manageSerial1();
   manageSerialI2c();
   manageByteSerial1();
-
-  btnStart.update();
-  btnStop.update();
-  btnEsc.update();
-  btnUp.update();
-  btnDown.update();
-  btnEnter.update();
+  // btnStart.update();
+  // btnStop.update();
+  // btnEsc.update();
+  // btnUp.update();
+  // btnDown.update();
+  // btnEnter.update();
 
   uint32_t currentMillis = millis();
-  if (currentMillis - previousMillis >= 1000)
-  {
-    previousMillis = currentMillis;
+  // ----------------- MODE TSET ----------------- //
 
-    // Serial.print("$Hello ");
-    // Serial.print(i);
-    // Serial.println("#");
-    // Serial1.print("$Hello ");
-    // Serial1.print(i);
-    // Serial1.println("#");
-    i++;
-  }else if(currentMillis < previousMillis){
+  if (currentMillis - previousMillis >= 100)
+  {
+    // if (!isMenuSetting)
+    // {
+    //   String line1 = name+" STD: " + String(stdMin) + " - " + String(stdMax);
+    //   String line2 = "";
+    //   if (stateStart && !stateStop && stateCensorOnStation)
+    //   {
+    //     line2 = "SCW: " + String(scw_c) + "/" + String(scw_count)+":"+ String(currentMillis - timeStart)+"ms";
+    //   }else if(stateCensorOnStation){
+    //     line2 = "SCW: " + String(scw_c) + "/" + String(scw_count) + ":"+String(timeComplete)+"ms";
+    //   }else{
+    //     line2 = "----------";
+    //   }
+    //   updateLCD(line1.c_str(), line2.c_str());
+    // }else{
+
+    // }
+    previousMillis = currentMillis;
+  }
+  else if (currentMillis < previousMillis)
+  {
     previousMillis = currentMillis;
   }
 
@@ -266,15 +356,16 @@ void manageSerial()
     Serial1.println(inputString);
     startReceived = false;
     endReceived = false;
-
     // Clear the inputString
     memset(inputString, 0, BUFFER_SIZE_DATA);
     inputStringLength = 0;
   }
 }
 
-void manageByteSerial1(){
-  if(startReceivedByte1 && endReceivedByte1){
+void manageByteSerial1()
+{
+  if (startReceivedByte1 && endReceivedByte1)
+  {
     inputByte1[inputByteLength1] = '\0';
     char hexStr[(inputByteLength1 * 2) + 1];
 
@@ -285,8 +376,6 @@ void manageByteSerial1(){
       // Serial.print(" ");
       sprintf(&hexStr[i * 2], "%02X", inputByte1[i]);
     }
-
-    
 
     // Serial.println(hexStr);
     Serial.print("$RFID:");
@@ -302,8 +391,8 @@ void manageByteSerial1(){
     // Clear the inputString
     memset(inputByte1, 0, BUFFER_SIZE_DATA);
     inputByteLength1 = 0;
+    tone(BUZZER_PIN, 2000, 50);
   }
-
 }
 
 void ToneFun(uint32_t _currentMillis, uint32_t &_lastTime, uint32_t _toneTime, int _toneFreq, uint8_t _dutyCycle, uint8_t &totalTone)
@@ -328,7 +417,6 @@ void ToneFun(uint32_t _currentMillis, uint32_t &_lastTime, uint32_t _toneTime, i
     _lastTime = _currentMillis;
   }
 }
-
 
 void manageSerial1()
 {
@@ -363,91 +451,134 @@ void manageSerialI2c()
   }
 }
 
-
-void parseData(String dataInput) {
+void parseData(String dataInput)
+{
   dataInput.trim();
-  if (dataInput.indexOf("KBD_K:") != -1) {
-    String serialData = extractData(dataInput , "KBD_K:");
-    // Serial.print("DataEx: ");
-    // Serial.println(serialData);
-    if(serialData.length() > 0){
-      for (int i = 0; i < serialData.length(); i++) {
-        // String str = serialData[i].toUpperCase();
+  if (dataInput.indexOf("KBD_K:") != -1)
+  {
+    String serialData = extractData(dataInput, "KBD_K:");
+    Serial.print("DataEx: ");
+    Serial.println(serialData);
+    if (serialData.length() > 0)
+    {
+      for (int i = 0; i < serialData.length(); i++)
+      {
         Keyboard.print(serialData[i]);
-        // delay(1);
       }
       Keyboard.press(KEY_RETURN);
-      // delay(1);
       Keyboard.releaseAll();
     }
- 
-  } else if (dataInput.indexOf("LCD:") != -1) {
-    String serialDataLine1 = extractData(dataInput, "line1:");
-    String serialDataLine2 = extractData(dataInput, "line2:");
-    updateLCD(serialDataLine1, serialDataLine2);
   }
-}
-
-String extractData(String dataInput, String key) {
-  int keyIndex = dataInput.indexOf(key);  // Find the position of the key
-  if (keyIndex == -1) {
-    return "";  // Return 0 if key not found
-  }
-
- int startIndex = keyIndex + key.length();  // Start index for the number
-  int endIndex = dataInput.indexOf(",", startIndex);  // Find the next comma after the key
-  if (endIndex == -1) {
-    endIndex = dataInput.length();  // If no comma, assume end of string
-  }
-
-  String valueStr = dataInput.substring(startIndex, endIndex);  // Extract the substring
-  return valueStr;  // Return the extracted string
-}
-
-
-char currentLine1[17] = "                "; // 16 characters + null terminator
-char currentLine2[17] = "                "; // 16 characters + null terminator
-
-void updateLCD(const String newDataLine1, const String newDataLine2)
-{
-  updateLCD(newDataLine1.c_str(), newDataLine2.c_str());
-}
-
-void updateLCD(const char *newDataLine1, const char *newDataLine2)
-{
-  updateLCDLine(newDataLine1, currentLine1, 0);
-  updateLCDLine(newDataLine2, currentLine2, 1);
-}
-
-void updateLCDLine(const char *newData, char (&currentLine)[17], int row)
-{
-  int i;
-  // Update characters as long as they are different or until newData ends
-  for (i = 0; i < 16 && newData[i]; i++)
+  else if (dataInput.indexOf("LCD:") != -1)
   {
-    if (newData[i] != currentLine[i])
+    // String serialDataLine1 = extractData(dataInput, "line1:");
+    // String serialDataLine2 = extractData(dataInput, "line2:");
+    // updateLCD(serialDataLine1, serialDataLine2);
+  }
+  else if (dataInput.indexOf("SETMODE:") != -1)
+  {
+    String serialData = extractData(dataInput, "SETMODE:");
+    if (serialData == "SETTING")
     {
-      lcd.setCursor(i, row);
-      lcd.print(newData[i]);
-      currentLine[i] = newData[i];
+      isMenuSetting = true;
+    }
+    else
+    {
+      isMenuSetting = false;
     }
   }
-  // Clear any remaining characters from the previous display
-  for (; i < 16; i++)
+  else if (dataInput.indexOf("UPDATE:") != -1)
   {
-    if (currentLine[i] != ' ')
+    if (dataInput.indexOf("name:") != -1)
     {
-      lcd.setCursor(i, row);
-      lcd.print(' ');
-      currentLine[i] = ' ';
+      String serialData = extractData(dataInput, "name:");
+      name = serialData;
+    }
+
+    if (dataInput.indexOf("min:") != -1)
+    {
+      String serialData = extractData(dataInput, "min:");
+      stdMin = serialData.toInt();
+    }
+
+    if (dataInput.indexOf("max:") != -1)
+    {
+      String serialData = extractData(dataInput, "max:");
+      stdMax = serialData.toInt();
+    }
+
+    if (dataInput.indexOf("scw_c:") != -1)
+    {
+      String serialData = extractData(dataInput, "scw_c:");
+      scw_count = serialData.toInt();
     }
   }
 }
+
+String extractData(String dataInput, String key)
+{
+  int keyIndex = dataInput.indexOf(key); // Find the position of the key
+  if (keyIndex == -1)
+  {
+    return ""; // Return 0 if key not found
+  }
+
+  int startIndex = keyIndex + key.length();          // Start index for the number
+  int endIndex = dataInput.indexOf(",", startIndex); // Find the next comma after the key
+  if (endIndex == -1)
+  {
+    endIndex = dataInput.length(); // If no comma, assume end of string
+  }
+
+  String valueStr = dataInput.substring(startIndex, endIndex); // Extract the substring
+  return valueStr;                                             // Return the extracted string
+}
+
+// char currentLine1[17] = "                "; // 16 characters + null terminator
+// char currentLine2[17] = "                "; // 16 characters + null terminator
+
+// void updateLCD(const String newDataLine1, const String newDataLine2)
+// {
+//   updateLCD(newDataLine1.c_str(), newDataLine2.c_str());
+// }
+
+// void updateLCD(const char *newDataLine1, const char *newDataLine2)
+// {
+//   updateLCDLine(newDataLine1, currentLine1, 0);
+//   updateLCDLine(newDataLine2, currentLine2, 1);
+// }
+
+// void updateLCDLine(const char *newData, char (&currentLine)[17], int row)
+// {
+//   int i;
+//   // Update characters as long as they are different or until newData ends
+//   for (i = 0; i < 16 && newData[i]; i++)
+//   {
+//     if (newData[i] != currentLine[i])
+//     {
+//       lcd.setCursor(i, row);
+//       lcd.print(newData[i]);
+//       currentLine[i] = newData[i];
+//     }
+//   }
+//   // Clear any remaining characters from the previous display
+//   for (; i < 16; i++)
+//   {
+//     if (currentLine[i] != ' ')
+//     {
+//       lcd.setCursor(i, row);
+//       lcd.print(' ');
+//       currentLine[i] = ' ';
+//     }
+//   }
+// }
 
 void btnStartOnEventChange(bool state)
-{
-  if (!state)
+{stateStart = !state;
+  if (stateStart)
   {
+    timeStart = millis(); // Stamp time start
+    LED_Controls(3);
     Serial.println("START");
     Serial1.println("$BTN:START#");
     tone(BUZZER_PIN, 2000, 50);
@@ -464,14 +595,13 @@ void btnStopOnEventChange(bool state)
   }
 }
 
-
 void btnEscOnEventChange(bool state)
 {
   if (!state)
   {
     Serial.println("ESC");
     Serial1.println("$BTN:ESC#");
-     tone(BUZZER_PIN, 2000, 100);
+    tone(BUZZER_PIN, 2000, 100);
   }
 }
 
@@ -481,7 +611,7 @@ void btnUpOnEventChange(bool state)
   {
     Serial.println("UP");
     Serial1.println("$BTN:UP#");
-     tone(BUZZER_PIN, 2000, 100);
+    tone(BUZZER_PIN, 2000, 100);
   }
 }
 
@@ -491,7 +621,7 @@ void btnDownOnEventChange(bool state)
   {
     Serial.println("DOWN");
     Serial1.println("$BTN:DOWN#");
-     tone(BUZZER_PIN, 2000, 100);
+    tone(BUZZER_PIN, 2000, 100);
   }
 }
 
@@ -501,6 +631,132 @@ void btnEnterOnEventChange(bool state)
   {
     Serial.println("ENTER");
     Serial1.println("$BTN:ENTER#");
-     tone(BUZZER_PIN, 2000, 100);
+    tone(BUZZER_PIN, 2000, 100);
+  }
+}
+
+void ledMesOnEventChange(bool state)
+{
+  if (state)
+  {
+    Serial.println("LED MES ON");
+    Serial1.println("$LED:MES:ON#");
+  }
+  else
+  {
+    Serial.println("LED MES OFF");
+    Serial1.println("$LED:MES:OFF#");
+  }
+}
+
+void ledPwrOnEventChange(bool state)
+{
+  if (state)
+  {
+    Serial.println("LED PWR ON");
+    Serial1.println("$LED:PWR:ON#");
+  }
+  else
+  {
+    Serial.println("LED PWR OFF");
+    Serial1.println("$LED:PWR:OFF#");
+  }
+}
+
+void ledRedOnEventChange(bool state)
+{
+  if (state)
+  {
+    Serial.println("LED RED ON");
+    Serial1.println("$LED:RED:ON#");
+  }
+  else
+  {
+    Serial.println("LED RED OFF");
+    Serial1.println("$LED:RED:OFF#");
+  }
+}
+
+void ledGreenOnEventChange(bool state)
+{
+  if (state)
+  {
+    Serial.println("LED GREEN ON");
+    Serial1.println("$LED:GREEN:ON#");
+  }
+  else
+  {
+    Serial.println("LED GREEN OFF");
+    Serial1.println("$LED:GREEN:OFF#");
+  }
+}
+
+void ledBlueOnEventChange(bool state)
+{
+  if (state)
+  {
+    Serial.println("LED BLUE ON");
+    Serial1.println("$LED:BLUE:ON#");
+  }
+  else
+  {
+    Serial.println("LED BLUE OFF");
+    Serial1.println("$LED:BLUE:OFF#");
+  }
+}
+
+void ledLogJigOnEventChange(bool state)
+{
+  if (state)
+  {
+    Serial.println("LED LOG JIG ON");
+    Serial1.println("$LED:LOGJIG:ON#");
+  }
+  else
+  {
+    Serial.println("LED LOG JIG OFF");
+    Serial1.println("$LED:LOGJIG:OFF#");
+  }
+}
+
+void LED_Controls(int _mode)
+{
+  if (_mode == 0)
+  {
+    // ledRed.off();
+    // ledGreen.off();
+    // ledBlue.off();
+
+    // relayGreen.off();
+    // relayOrange.on();
+    // relayRed.off();
+    // relayAram.off();
+  }
+  else if (_mode == 1)
+  {
+    // ledRed.on();
+    // ledGreen.off();
+    // ledBlue.off();
+
+    // relayGreen.off();
+    // relayOrange.off();
+    // relayRed.on();
+    // relayAram.on();
+  }
+  else if (_mode == 2)
+  {
+    // ledRed.off();
+    // ledGreen.on();
+    // ledBlue.off();
+
+    // relayGreen.on();
+    // relayOrange.off();
+    // relayRed.off();
+  }
+  else if (_mode == 3)
+  {
+    // ledRed.off();
+    // ledGreen.off();
+    // ledBlue.on();
   }
 }

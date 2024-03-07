@@ -414,9 +414,9 @@ void setup()
   tickerUnlockJig.off();
   // Add function of button
   btnStart.OnEventChange(btnStartOnEventChange);
-  btnStart.DebounceDelay(10); // 20ms
+  btnStart.DebounceDelay(10); // 10ms
   btnStop.OnEventChange(btnStopOnEventChange);
-  btnStop.DebounceDelay(10); // 20ms
+  btnStop.DebounceDelay(10); // 10ms
 
   btnEsc.OnEventChange(btnEscOnEventChange);
   btnEsc.DebounceDelay(20);
