@@ -1124,6 +1124,7 @@ void LED_Controls(uint8_t state = 0)
 {
   if (state == 0)
   {
+    // OFF
     ledRed.off();
     ledGreen.off();
     ledBlue.off();
@@ -1135,6 +1136,7 @@ void LED_Controls(uint8_t state = 0)
   }
   else if (state == 1)
   {
+    // NG
     ledRed.on();
     ledGreen.off();
     ledBlue.off();
@@ -1146,6 +1148,7 @@ void LED_Controls(uint8_t state = 0)
   }
   else if (state == 2)
   {
+    // PASS
     ledRed.off();
     ledGreen.on();
     ledBlue.off();
@@ -1156,6 +1159,7 @@ void LED_Controls(uint8_t state = 0)
   }
   else if (state == 3)
   {
+    // TESTING
     ledRed.off();
     ledGreen.off();
     ledBlue.on();
