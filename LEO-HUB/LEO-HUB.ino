@@ -74,7 +74,7 @@ int countLockJig = 0;
 int countUnlockJig = 0;
 const int countLockJigMax = 3 * 10;  // 3 second
 boolean stateCensorOnStation = false;
-String name = "Please select";
+String name = "SELECT ITEM ";
 int stdMin, stdMax = 0;
 int countScrew = 0;
 int countScrewMax = 0;
@@ -88,8 +88,9 @@ enum SEQUENCE {
   RESET,
   READY
 };
-int count_pwr = 50;
+// int count_pwr = 50;
 SEQUENCE sequence = READY;  // Default state
+
 String item = "";
 String id = "";
 bool isMenuSetting, oldIsMenuSetting = false;
@@ -305,7 +306,6 @@ void loop() {
         // LED ON ledRed
         LED_Controls(1);
       }
-
       String data = "$SAVE:"; // + String(timeComplete) + "#";
       data += ",item:" + String(item);
       data += ",time_start:"+ String(timeStart);
@@ -324,9 +324,10 @@ void loop() {
   }
   // ----------------- MODE TSET ----------------- //
   if (currentMillis - previousMillis >= 100) {
+
       if(isStarted == false) {
-        isStarted = true;
-        mySerial.println("$PWR:ON#");
+        // isStarted = true;
+        // mySerial.println("$PWR:ON#");
         return;
       }
     
@@ -560,7 +561,7 @@ void parseData(String dataInput) {
   } else if (dataInput.indexOf("CONN:") != -1) {
     mySerial.println("$CONN:OK#");
   } else if (dataInput.indexOf("PWR:") != -1) {
-    String _extractData = extractData(dataInput, "PWR:");
+    // String _extractData = extractData(dataInput, "PWR:");
     isStarted = true;
   }
 
