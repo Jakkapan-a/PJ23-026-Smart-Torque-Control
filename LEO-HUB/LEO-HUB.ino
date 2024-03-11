@@ -60,13 +60,15 @@ TcPINOUT relayLockJig(RELAY_LOCK_JIG_PIN, false);
 TcPINOUT relayTorquePwr(RELAY_TORQUE_PWR_PIN, false);
 
 #define BUZZER_PIN 6
-TcBUZZER buzzer(BUZZER_PIN, TcBUZZER::ACTIVE_HIGH);
+TcBUZZER buzzerPass(BUZZER_PIN, false);
+// TcBUZZER buzzerNG(BUZZER_PIN, false);
+
 // ----------------- VARIABLE ----------------- //
 uint8_t passToneCount = 0;
-uint32_t lastTimeTonePASS = 0;
+// uint32_t lastTimeTonePASS = 0;
 uint8_t ngToneCount = 0;
 const uint8_t totalToneNG = 15;
-uint32_t lastTimeToneNG = 0;
+// uint32_t lastTimeToneNG = 0;
 
 uint32_t previousMillis = 0;
 uint32_t timeStart, timeComplete = 0;
@@ -285,7 +287,6 @@ void setup()
   Keyboard.begin();
   updateLCD("Starting...", "Please wait....");
 
-  passToneCount = 2;
   delay(1000);
   Serial.print("START");
   // Serial1.println("$PWR:ON#");
@@ -298,6 +299,11 @@ void setup()
   // ----------------- RELAY ----------------- //
   LED_Controls(0);
   isStarted = false;
+  buzzerPass.setTime(200);
+  // buzzerNG.setTime(100);
+  passToneCount = 2;
+  buzzerPass.total = 2;
+  // ----------------- SERIAL ----------------- //
 }
 
 void loop()
@@ -313,6 +319,7 @@ void loop()
   manageSerialI2c();
   manageByteSerial1();
   manageSWSerial();
+  
 
   uint32_t currentMillis = millis();
   if (!isMenuSetting)
@@ -337,7 +344,9 @@ void loop()
               // complete
               sequence = PASS;
               isAllowMes = true;
-              passToneCount = 1;
+              // passToneCount = 1;
+              buzzerPass.setTime(200);
+              buzzerPass.total = 1;
               countUnlockJig = countLockJigMax;
               // LED ON ledGreen
               LED_Controls(2);
@@ -369,14 +378,15 @@ void loop()
           LED_Controls(0);
         }
         // LED on ledGreen
-        passToneCount += 1;
-        
+        // passToneCount += 1;
+        buzzerPass.setTime(200);
+        buzzerPass.total += 1;
       }
       else
       {
         // NG
         sequence = NG;
-        ngToneCount = totalToneNG;
+        // ngToneCount = totalToneNG;
         // LED ON ledRed
         LED_Controls(1);
       }
@@ -394,7 +404,10 @@ void loop()
 
     if (sequence == NG)
     {
-      ngToneCount = totalToneNG;
+      // ngToneCount = totalToneNG;
+      // buzzerNG.on(totalToneNG);
+      // buzzerPass.setTime(100);
+      buzzerPass.total = 15;
     }
   }
   // ----------------- MODE TSET ----------------- //
@@ -479,8 +492,10 @@ void loop()
   {
     previousMillis = currentMillis;
   }
-  ToneFun(currentMillis, lastTimeTonePASS, 200, 2000, 50, passToneCount); //
-  ToneFun(currentMillis, lastTimeToneNG, 100, 2000, 50, ngToneCount);
+  // ToneFun(currentMillis, lastTimeTonePASS, 200, 2000, 50, passToneCount); //
+  // ToneFun(currentMillis, lastTimeToneNG, 100, 2000, 50, ngToneCount);
+  buzzerPass.update();
+  // buzzerNG.update();
 }
 
 void manageSerial()
@@ -529,6 +544,9 @@ void manageByteSerial1()
     {
       rfidData = "Not accept";
       ngToneCount = totalToneNG;
+      // buzzerNG.total = totalToneNG;
+      // buzzerPass.setTime(100);
+      buzzerPass.total = 15;
     }
     rfidShow = 10;
     startReceivedByte1 = false;
@@ -539,28 +557,28 @@ void manageByteSerial1()
   }
 }
 
-void ToneFun(uint32_t _currentMillis, uint32_t &_lastTime, uint32_t _toneTime, int _toneFreq, uint8_t _dutyCycle, uint8_t &totalTone)
-{
-  if (totalTone <= 0)
-  {
-    return;
-  }
-  // uint32_t currentMillis = millis();
-  if (_currentMillis - _lastTime > _toneTime)
-  {
-    if (_dutyCycle > 0)
-    {
-      int p = (int)(_dutyCycle * _toneTime / 100);
-      tone(BUZZER_PIN, _toneFreq, p);
-      totalTone--;
-    }
-    _lastTime = _currentMillis;
-  }
-  else if (_currentMillis < _lastTime)
-  {
-    _lastTime = _currentMillis;
-  }
-}
+// void ToneFun(uint32_t _currentMillis, uint32_t &_lastTime, uint32_t _toneTime, int _toneFreq, uint8_t _dutyCycle, uint8_t &totalTone)
+// {
+//   if (totalTone <= 0)
+//   {
+//     return;
+//   }
+//   // uint32_t currentMillis = millis();
+//   if (_currentMillis - _lastTime > _toneTime)
+//   {
+//     if (_dutyCycle > 0)
+//     {
+//       int p = (int)(_dutyCycle * _toneTime / 100);
+//       tone(BUZZER_PIN, _toneFreq, p);
+//       totalTone--;
+//     }
+//     _lastTime = _currentMillis;
+//   }
+//   else if (_currentMillis < _lastTime)
+//   {
+//     _lastTime = _currentMillis;
+//   }
+// }
 
 void manageSerial1()
 {
@@ -621,7 +639,9 @@ void parseData(String dataInput)
       //   Serial.print("Not allow");
       scannerShow = 10;
       scannerData = "Not allow";
-      ngToneCount = 10;
+      // ngToneCount = 10;
+      // buzzerPass.setTime(100);
+      buzzerPass.total = 10;
       return;
     }
     String serialData = extractData(dataInput, "KBD_K:");
@@ -636,7 +656,9 @@ void parseData(String dataInput)
       Keyboard.press(KEY_RETURN);
       Keyboard.releaseAll();
     }
-    passToneCount += 1;
+    // passToneCount += 1;
+    buzzerPass.setTime(200);  
+    buzzerPass.total += 1;
     scannerShow = 10;
     scannerData = "OK";
   }
@@ -656,7 +678,13 @@ void parseData(String dataInput)
       isAllowMes = true;
       sequence = RESET;
       countUnlockJig = countLockJigMax;
-      passToneCount += 1;
+      // passToneCount += 1;
+      buzzerPass.off();
+
+      // delay(200);
+      
+      buzzerPass.setTime(200);
+      buzzerPass.total += 1;
       String data = "$LOG:";
       data += ",item:" + item;
       data += ",data: UNLOCK BY RFID " + rfidData;
@@ -855,7 +883,9 @@ void btnCensorOnStOnEventChange(bool state)
     currentSequenceOfTest = 0;
     countScrew = 0;
     sequence = READY;
-    ngToneCount = 0; // Reset ng tone
+    // ngToneCount = 0; // Reset ng tone
+    // buzzerNG.off();
+    buzzerPass.off();
     timeComplete = 0;
     isAllowMes = false;
     LED_Controls(0);

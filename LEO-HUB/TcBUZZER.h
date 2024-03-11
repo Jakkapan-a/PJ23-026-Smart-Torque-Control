@@ -7,8 +7,8 @@ class TcBUZZER
 {
  protected:
 	uint8_t pin = 0;
-    uint8_t active = 1;
-    uint8_t total = 0;
+    bool active = 1;
+    bool state = false;
     // uint32_t previousMillis;
     uint32_t previousMillisDuty;
     uint32_t toneTime = 500; // 500ms by default
@@ -21,12 +21,14 @@ class TcBUZZER
        ACTIVE_LOW = 0
     };
 
-    TcBUZZER(uint8_t pin, uint8_t active);
+    uint8_t total = 0;
+    TcBUZZER(uint8_t pin, bool active);
     void begin();
     void update();
     void on(uint8_t _total);
     void off();
-    void setSequence(uint8_t _total, uint32_t _toneTime, uint8_t _dutyCycle);
+    void setTime(uint32_t _toneTime);
+    void setDutyCycle(uint8_t _dutyCycle);
 };
 
 #endif
