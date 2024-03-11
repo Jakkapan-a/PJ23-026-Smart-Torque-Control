@@ -1,0 +1,1763 @@
+[
+    {
+        "id": "07f82150235aa65f",
+        "type": "tab",
+        "label": "SERIAL PORT",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "9f6d30691e0c3fcc",
+        "type": "tab",
+        "label": "KEYBOARD",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "f108ee4240c970c2",
+        "type": "tab",
+        "label": "DISPLAY UPDATE",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "f07804535f466a54",
+        "type": "tab",
+        "label": "GPIO",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "08b3b1cd5e4cbf45",
+        "type": "serial-port",
+        "name": "ttyUSB0",
+        "serialport": "/dev/ttyUSB0",
+        "serialbaud": "9600",
+        "databits": "8",
+        "parity": "none",
+        "stopbits": "1",
+        "waitfor": "",
+        "dtr": "none",
+        "rts": "none",
+        "cts": "none",
+        "dsr": "none",
+        "newline": "\\n",
+        "bin": "false",
+        "out": "char",
+        "addchar": "",
+        "responsetimeout": "10000"
+    },
+    {
+        "id": "30a28ba593a2dae0",
+        "type": "global-config",
+        "name": "global-config",
+        "env": [
+            {
+                "name": "HOST_API",
+                "value": " 192.168.137.10",
+                "type": "str"
+            }
+        ]
+    },
+    {
+        "id": "739b2f0935e8e829",
+        "type": "serial in",
+        "z": "07f82150235aa65f",
+        "name": "ttyUSB0",
+        "serial": "08b3b1cd5e4cbf45",
+        "x": 140,
+        "y": 460,
+        "wires": [
+            [
+                "5ae03206644ebf1b",
+                "cc6cb759804f8199"
+            ]
+        ]
+    },
+    {
+        "id": "d100f1542a09ca64",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "query",
+        "url": "http://127.0.0.1:8888",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1190,
+        "y": 1120,
+        "wires": [
+            [
+                "7c2c13167ec007d5"
+            ]
+        ]
+    },
+    {
+        "id": "7c2c13167ec007d5",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 9",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1440,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "6e2e8616deec4825",
+        "type": "serial out",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "serial": "08b3b1cd5e4cbf45",
+        "x": 1820,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "b5ca9ea2726cced6",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 17",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1660,
+        "y": 1400,
+        "wires": []
+    },
+    {
+        "id": "86cc10162c4553f4",
+        "type": "switch",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "hask",
+                "v": "pwr",
+                "vt": "str"
+            },
+            {
+                "t": "hask",
+                "v": "rfid",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 910,
+        "y": 1060,
+        "wires": [
+            [
+                "d100f1542a09ca64"
+            ],
+            [
+                "ec3a61513a1dcade"
+            ]
+        ]
+    },
+    {
+        "id": "79f053a903a9f508",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "function MODE",
+        "func": "// Destructure line1, line2, mode, and cursor from the incoming payload\nconst { active } = msg.payload\n\n// Check if line1 and line2 exist to prevent errors\n\n\nif (typeof active === 'undefined' || typeof active === 'undefined') {\n    return;\n}\n\nmsg.payload = `$RFID:${active}#`\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1460,
+        "y": 1480,
+        "wires": [
+            [
+                "b5ca9ea2726cced6",
+                "f18e687e3c3d1e7b"
+            ]
+        ]
+    },
+    {
+        "id": "ec3a61513a1dcade",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "query",
+        "url": "http://127.0.0.1:8888/rfid",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1190,
+        "y": 1420,
+        "wires": [
+            [
+                "79f053a903a9f508",
+                "e0d6f068161eb886"
+            ]
+        ]
+    },
+    {
+        "id": "f18e687e3c3d1e7b",
+        "type": "delay",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "100",
+        "timeoutUnits": "milliseconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1750,
+        "y": 1540,
+        "wires": [
+            [
+                "6e2e8616deec4825"
+            ]
+        ]
+    },
+    {
+        "id": "5ae03206644ebf1b",
+        "type": "switch",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "cont",
+                "v": "ITEM:",
+                "vt": "str"
+            },
+            {
+                "t": "cont",
+                "v": "SAVE:",
+                "vt": "str"
+            },
+            {
+                "t": "cont",
+                "v": "LOG:",
+                "vt": "str"
+            },
+            {
+                "t": "cont",
+                "v": "ITEM:",
+                "vt": "str"
+            },
+            {
+                "t": "cont",
+                "v": "RFID",
+                "vt": "str"
+            },
+            {
+                "t": "cont",
+                "v": "SEQ:",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 6,
+        "x": 330,
+        "y": 600,
+        "wires": [
+            [
+                "8ae494786f2201b4"
+            ],
+            [
+                "9720fc359901085a"
+            ],
+            [
+                "57851edd2c98d2e0"
+            ],
+            [],
+            [
+                "271a14591f8cc663"
+            ],
+            [
+                "5e8bdcf996923f3d",
+                "dc6b9ab61ffd0a38"
+            ]
+        ]
+    },
+    {
+        "id": "8ae494786f2201b4",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:8888/get-item",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Content-Type",
+                "keyValue": "",
+                "valueType": "application/json",
+                "valueValue": ""
+            }
+        ],
+        "x": 650,
+        "y": 560,
+        "wires": [
+            [
+                "9ac9c05508305beb",
+                "6ea217c5411b7c97"
+            ]
+        ]
+    },
+    {
+        "id": "9ac9c05508305beb",
+        "type": "switch",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "hask",
+                "v": "item",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 870,
+        "y": 600,
+        "wires": [
+            [
+                "3e2999ec49f58c10"
+            ]
+        ]
+    },
+    {
+        "id": "3e2999ec49f58c10",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "function 15",
+        "func": "// Destructure line1, line2, mode, and cursor from the incoming payload\nconst { item } = msg.payload\n// Check if line1 and line2 exist to prevent errors\nif (typeof item === 'undefined' || typeof item === 'undefined') {\n    return;\n}\n\nglobal.set('ITEM',item);\n\nmsg.payload = `$ITEM:${item}#`\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1130,
+        "y": 640,
+        "wires": [
+            [
+                "89f24c3e0be05354"
+            ]
+        ]
+    },
+    {
+        "id": "89f24c3e0be05354",
+        "type": "delay",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "100",
+        "timeoutUnits": "milliseconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1290,
+        "y": 840,
+        "wires": [
+            [
+                "6e2e8616deec4825"
+            ]
+        ]
+    },
+    {
+        "id": "65872b69f1eced4b",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 19",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1140,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "8df27f1e04b8601e",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "PWR CHECK",
+        "func": "msg.payload = \"$PWR:OK#\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 1720,
+        "wires": [
+            [
+                "d8c74da3e8e1a1d3",
+                "18c6fea626424313"
+            ]
+        ]
+    },
+    {
+        "id": "d8c74da3e8e1a1d3",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 20",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 1780,
+        "wires": []
+    },
+    {
+        "id": "b8a627f0cc82d6d2",
+        "type": "inject",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "5",
+        "topic": "",
+        "payload": "check",
+        "payloadType": "str",
+        "x": 210,
+        "y": 1780,
+        "wires": [
+            [
+                "8df27f1e04b8601e",
+                "c907e952a492b7bc"
+            ]
+        ]
+    },
+    {
+        "id": "9720fc359901085a",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "SAVE ",
+        "func": "\nif (!msg.payload.startsWith(\"$\") && !msg.payload.endsWith(\"#\")) {\n    return;\n}\n\nfunction parseInputString(input) {\n    // Remove the prefix and trailing character\n    const trimmedInput = input.substring(6, input.length - 1);\n\n    // Split into key-value pairs\n    const pairs = trimmedInput.split(',');\n\n    // Create an object and fill it with the key-value pairs\n    const data = {};\n    pairs.forEach(pair => {\n        const [key, value] = pair.split(':');\n        if (key && value) { // Check if key and value exist to handle empty pairs\n            data[key.toLowerCase()] = value;\n        }\n    });\n\n    return data;\n}\n\nconst data = parseInputString(msg.payload.replace(\"$\", \"\").replace(\"#\", \"\").replace('\\n',\"\"));\nmsg.payload = data;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 690,
+        "y": 800,
+        "wires": [
+            [
+                "ffa713981a1cea8a"
+            ]
+        ]
+    },
+    {
+        "id": "57851edd2c98d2e0",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "LOG",
+        "func": "\nfunction parseMultipleRFIDString(input) {\n    // Remove the starting '$' and trailing '#' character\n    const trimmedInput = input.substring(0, input.length - 1);\n\n    // Split the string into key-value pairs\n    const pairs = trimmedInput.split(',');\n\n    // Create an object to hold the RFID data\n    const data = {};\n\n    pairs.forEach(pair => {\n        const [key, value] = pair.split(':');\n        if (key && value) { // Check if both key and value exist\n            // Add the key-value pair to the object\n            data[key.toLowerCase()] = value;\n        }\n    });\n\n    return data;\n}\n\nconst data = parseMultipleRFIDString(msg.payload.replace(\"$\", \"\").replace(\"#\", \"\").replace('\\n', \"\"));\nmsg.payload = data;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 690,
+        "y": 860,
+        "wires": [
+            [
+                "a0232dd6f2c581b1"
+            ]
+        ]
+    },
+    {
+        "id": "ffa713981a1cea8a",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "query",
+        "url": "http://127.0.0.1:8888/history",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 950,
+        "y": 800,
+        "wires": [
+            [
+                "65872b69f1eced4b"
+            ]
+        ]
+    },
+    {
+        "id": "8f5960b65714e563",
+        "type": "inject",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "$SAVE:OK#\"",
+        "payloadType": "str",
+        "x": 110,
+        "y": 620,
+        "wires": [
+            [
+                "5ae03206644ebf1b"
+            ]
+        ]
+    },
+    {
+        "id": "cc6cb759804f8199",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 21",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 380,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "6ea217c5411b7c97",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 22",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 820,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "e0d6f068161eb886",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 23",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1420,
+        "y": 1360,
+        "wires": []
+    },
+    {
+        "id": "271a14591f8cc663",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "PWR & RFID",
+        "func": "function parseMultipleRFIDString(input) {\n    // Remove the starting '$' and trailing '#' character\n    const trimmedInput = input.substring(0, input.length - 1);\n\n    // Split the string into key-value pairs\n    const pairs = trimmedInput.split(',');\n\n    // Create an object to hold the RFID data\n    const data = {};\n\n    pairs.forEach(pair => {\n        const [key, value] = pair.split(':');\n        if (key && value) { // Check if both key and value exist\n            // Add the key-value pair to the object\n            data[key.toLowerCase()] = value;\n        }\n    });\n\n    return data;\n}\n\nconst data = parseMultipleRFIDString(msg.payload.replace(\"$\", \"\").replace(\"#\", \"\").replace('\\n', \"\"));\nmsg.payload = data;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 920,
+        "wires": [
+            [
+                "86cc10162c4553f4",
+                "9cc31ebc658b3fbe"
+            ]
+        ]
+    },
+    {
+        "id": "9cc31ebc658b3fbe",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 24",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 900,
+        "y": 1180,
+        "wires": []
+    },
+    {
+        "id": "a0232dd6f2c581b1",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "query",
+        "url": "http://127.0.0.1:8888/logs",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 930,
+        "y": 940,
+        "wires": [
+            [
+                "65872b69f1eced4b"
+            ]
+        ]
+    },
+    {
+        "id": "18c6fea626424313",
+        "type": "serial out",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "serial": "08b3b1cd5e4cbf45",
+        "x": 960,
+        "y": 1660,
+        "wires": []
+    },
+    {
+        "id": "148af41d58f22b3a",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:8888/get-total-model",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 680,
+        "y": 1900,
+        "wires": [
+            [
+                "7276ac5adbc51a1e",
+                "43f2bc21d51d7107"
+            ]
+        ]
+    },
+    {
+        "id": "7276ac5adbc51a1e",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "SET TOTAL",
+        "func": "const { total } = msg.payload;\nif(typeof total === 'undefined'){\n     return;\n}\nglobal.set('TOTAL_STEP',total);\nconst data = `$TTL_SP:${total}#`;\nmsg.payload = data;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 900,
+        "y": 1960,
+        "wires": [
+            [
+                "a1affa71963ef018",
+                "18c6fea626424313"
+            ]
+        ]
+    },
+    {
+        "id": "a1affa71963ef018",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 26",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1140,
+        "y": 1900,
+        "wires": []
+    },
+    {
+        "id": "43f2bc21d51d7107",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 27",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 900,
+        "y": 1820,
+        "wires": []
+    },
+    {
+        "id": "c907e952a492b7bc",
+        "type": "rbe",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "func": "rbe",
+        "gap": "",
+        "start": "",
+        "inout": "out",
+        "septopics": false,
+        "property": "payload",
+        "topi": "topic",
+        "x": 440,
+        "y": 1900,
+        "wires": [
+            [
+                "148af41d58f22b3a"
+            ]
+        ]
+    },
+    {
+        "id": "920a0d3aed902146",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "UPDATE DATA",
+        "func": "// Destructure relevant properties from the incoming payload\nconst { name, min, max, active, scw_count,seq } = msg.payload;\n\n// Validate the destructured properties to ensure they exist and prevent errors\nif (typeof name === 'undefined' || typeof min === 'undefined' || typeof max === 'undefined' || typeof active === 'undefined' || typeof scw_count === 'undefined' || typeof seq === 'undefined') {\n    // Handle the error case or initialize variables to a default value\n    console.error('Missing required properties in the payload');\n    return msg; // Exit the function early if the validation fails\n}\n\n// Assuming 'data' needs to be a combination or transformation of the destructured properties\n// Customize this transformation according to your needs\nconst data = `NAME:${name},MIN:${min},MAX:${max},SCW:${scw_count},SEQ:${seq}`;\n// Update the payload with the transformed data\nmsg.payload = `$UPDATE:${data}#`;\n// Return the updated message\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 1580,
+        "wires": [
+            [
+                "248ba6bcac967fd8",
+                "18c6fea626424313"
+            ]
+        ]
+    },
+    {
+        "id": "a1c5a030f3e508a1",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:8888/get-active-model",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 670,
+        "y": 1480,
+        "wires": [
+            [
+                "920a0d3aed902146",
+                "86b5af0cf6d0d19f"
+            ]
+        ]
+    },
+    {
+        "id": "c610d6bb4e887534",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:8888/set-next-active",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 490,
+        "y": 1200,
+        "wires": [
+            [
+                "b208572f277c3de4",
+                "26ea3fa34ac26861"
+            ]
+        ]
+    },
+    {
+        "id": "b208572f277c3de4",
+        "type": "function",
+        "z": "07f82150235aa65f",
+        "name": "SET TOTAL",
+        "func": "const { message } = msg.payload;\nif (typeof message === 'undefined'){\n     return;\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 1360,
+        "wires": [
+            [
+                "aa58083aada6bfef",
+                "7bb98ba6bf99f07a"
+            ]
+        ]
+    },
+    {
+        "id": "5e8bdcf996923f3d",
+        "type": "switch",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "cont",
+                "v": "NEXT",
+                "vt": "str"
+            },
+            {
+                "t": "cont",
+                "v": "RST",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 270,
+        "y": 1120,
+        "wires": [
+            [
+                "c610d6bb4e887534"
+            ],
+            [
+                "2de8b86057b61726"
+            ]
+        ]
+    },
+    {
+        "id": "2de8b86057b61726",
+        "type": "http request",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://127.0.0.1:8888/reset-active",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 470,
+        "y": 1340,
+        "wires": [
+            [
+                "b208572f277c3de4",
+                "516e4a3917b855dc"
+            ]
+        ]
+    },
+    {
+        "id": "dc6b9ab61ffd0a38",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 29",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 410,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "86b5af0cf6d0d19f",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 30",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 990,
+        "y": 1480,
+        "wires": []
+    },
+    {
+        "id": "516e4a3917b855dc",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 31",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 390,
+        "y": 1460,
+        "wires": []
+    },
+    {
+        "id": "aa58083aada6bfef",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 32",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 930,
+        "y": 1360,
+        "wires": []
+    },
+    {
+        "id": "26ea3fa34ac26861",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 33",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 670,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "248ba6bcac967fd8",
+        "type": "debug",
+        "z": "07f82150235aa65f",
+        "name": "debug 34",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1110,
+        "y": 1600,
+        "wires": []
+    },
+    {
+        "id": "7639b6830f573eab",
+        "type": "inject",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"name\":\"T002\",\"min\":450,\"max\":1500,\"active\":1,\"scw_count\":2,\"seq\":2}",
+        "payloadType": "json",
+        "x": 350,
+        "y": 1540,
+        "wires": [
+            [
+                "920a0d3aed902146"
+            ]
+        ]
+    },
+    {
+        "id": "7bb98ba6bf99f07a",
+        "type": "delay",
+        "z": "07f82150235aa65f",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "50",
+        "timeoutUnits": "milliseconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 690,
+        "y": 1420,
+        "wires": [
+            [
+                "a1c5a030f3e508a1"
+            ]
+        ]
+    },
+    {
+        "id": "7a8626825153170e",
+        "type": "serial out",
+        "z": "9f6d30691e0c3fcc",
+        "name": "",
+        "serial": "08b3b1cd5e4cbf45",
+        "x": 1390,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "b6c6f59880d899ae",
+        "type": "rpi-keyboard",
+        "z": "9f6d30691e0c3fcc",
+        "name": "",
+        "x": 120,
+        "y": 400,
+        "wires": [
+            [
+                "b6bfadfa64b22cc4"
+            ]
+        ]
+    },
+    {
+        "id": "44aab36c8855e971",
+        "type": "debug",
+        "z": "9f6d30691e0c3fcc",
+        "name": "debug 18",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1350,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "b6bfadfa64b22cc4",
+        "type": "function",
+        "z": "9f6d30691e0c3fcc",
+        "name": "function 13",
+        "func": "let data = msg;\n\nif (typeof msg.payload === 'undefined' || typeof msg.action === 'undefined'){\n    msg.payload = {\"error\":\"not found\"}\n    return msg;\n}\nmsg.payload = { \"keyCode\": data, \"type\": \"keyboard\", \"playload\": msg.payload, \"code\": msg.payload, \"action\":msg.action}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 400,
+        "wires": [
+            [
+                "3136a579f9480f53"
+            ]
+        ]
+    },
+    {
+        "id": "3136a579f9480f53",
+        "type": "key-code-converter",
+        "z": "9f6d30691e0c3fcc",
+        "name": "",
+        "timeoutDuration": "500",
+        "x": 600,
+        "y": 400,
+        "wires": [
+            [
+                "7ec913f31699f038",
+                "5890f128900ded9a"
+            ]
+        ]
+    },
+    {
+        "id": "7ec913f31699f038",
+        "type": "function",
+        "z": "9f6d30691e0c3fcc",
+        "name": "function 19",
+        "func": "const {text ,status} = msg.payload;\n\nif (typeof text === 'undefined' || typeof status === 'undefined'){\n    return;    \n}\n\nif (status !== 'success'){\n    return;\n}\nmsg.payload = \"$KBD_K:\" + text +\"#\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 960,
+        "y": 400,
+        "wires": [
+            [
+                "44aab36c8855e971",
+                "7a8626825153170e"
+            ]
+        ]
+    },
+    {
+        "id": "5890f128900ded9a",
+        "type": "function",
+        "z": "9f6d30691e0c3fcc",
+        "name": "function 20",
+        "func": "\nconst { text, status } = msg.payload;\n\nif (typeof text === 'undefined' || typeof status === 'undefined') {\n    return;\n}\n\nif (status !== 'success') {\n    return;\n}\nconst item = global.get('ITEM');\n\nconst data = {\n    \"item\":item,\n    \"data\":\"Scanner \"+text\n}\nmsg.payload = data;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 260,
+        "wires": [
+            [
+                "24843f306783a307"
+            ]
+        ]
+    },
+    {
+        "id": "24843f306783a307",
+        "type": "http request",
+        "z": "9f6d30691e0c3fcc",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "query",
+        "url": "http://127.0.0.1:8888/logs",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1080,
+        "y": 140,
+        "wires": [
+            [
+                "8078941cd1be16e7"
+            ]
+        ]
+    },
+    {
+        "id": "8078941cd1be16e7",
+        "type": "debug",
+        "z": "9f6d30691e0c3fcc",
+        "name": "debug 25",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1230,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "13556882c5401451",
+        "type": "function",
+        "z": "f108ee4240c970c2",
+        "name": "function DISPLY I2C",
+        "func": "// Destructure line1, line2, mode, and cursor from the incoming payload\nconst { line1, line2, mode, cursor } = msg.payload;\n\n// Check if line1 and line2 exist to prevent errors\nif (typeof line1 === 'undefined' || typeof line2 === 'undefined') {\n    return { payload: \"Error: Payload does not contain line1 and line2.\" };\n}\n\n// Initialize the payload with line1 and line2\nlet payload = `$LCD:line1:${line1},line2:${line2}`;\n\n// Append mode and cursor to the payload if they are not undefined\nif (typeof mode !== 'undefined') {\n    payload += `,mode:${mode}`;\n}\nif (typeof cursor !== 'undefined') {\n    payload += `,cursor:${cursor}`;\n}\n\n// Finalize the payload\nmsg.payload = `${payload}#`;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 260,
+        "wires": [
+            [
+                "3e017a222d36fe99",
+                "0ef08d2441184ecf"
+            ]
+        ]
+    },
+    {
+        "id": "eb48b8dc138e3456",
+        "type": "http in",
+        "z": "f108ee4240c970c2",
+        "name": "",
+        "url": "/webhooks/lcd",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 150,
+        "y": 260,
+        "wires": [
+            [
+                "32fcc15d38a96fcb",
+                "13556882c5401451"
+            ]
+        ]
+    },
+    {
+        "id": "32fcc15d38a96fcb",
+        "type": "http response",
+        "z": "f108ee4240c970c2",
+        "name": "200",
+        "statusCode": "200",
+        "headers": {
+            "content-type": "application/json"
+        },
+        "x": 510,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "a8da27ae58c17de3",
+        "type": "inject",
+        "z": "f108ee4240c970c2",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"line1\":\"Hello1\",\"line2\":\"Line001\"}",
+        "payloadType": "json",
+        "x": 270,
+        "y": 80,
+        "wires": [
+            [
+                "13556882c5401451"
+            ]
+        ]
+    },
+    {
+        "id": "3e017a222d36fe99",
+        "type": "debug",
+        "z": "f108ee4240c970c2",
+        "name": "debug 10",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 850,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "a116964580786e32",
+        "type": "function",
+        "z": "f108ee4240c970c2",
+        "name": "function MODE",
+        "func": "// Destructure line1, line2, mode, and cursor from the incoming payload\nconst { mode } = msg.payload;\n\n// Check if line1 and line2 exist to prevent errors\nif (typeof mode === 'undefined' || typeof mode === 'undefined') {\n    return { payload: \"Error: Payload does not contain line1 and line2.\" };\n}\n\nmsg.payload = `$SETMODE:${mode==\"SETTING\"? 1:0 }#`\n\nglobal.set('MODE', mode == \"SETTING\" ? 1 : 0)\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 400,
+        "wires": [
+            [
+                "0ef08d2441184ecf"
+            ]
+        ]
+    },
+    {
+        "id": "4d97ea45cb235309",
+        "type": "http in",
+        "z": "f108ee4240c970c2",
+        "name": "",
+        "url": "/webhooks/mode",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 160,
+        "y": 400,
+        "wires": [
+            [
+                "a116964580786e32",
+                "32fcc15d38a96fcb"
+            ]
+        ]
+    },
+    {
+        "id": "d1b4847b3ebb75bf",
+        "type": "http in",
+        "z": "f108ee4240c970c2",
+        "name": "",
+        "url": "/webhooks/update",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 170,
+        "y": 840,
+        "wires": [
+            [
+                "32fcc15d38a96fcb",
+                "31665d9f0d73320c"
+            ]
+        ]
+    },
+    {
+        "id": "31665d9f0d73320c",
+        "type": "function",
+        "z": "f108ee4240c970c2",
+        "name": "function UPDATE",
+        "func": "// Destructure relevant properties from the incoming payload\nconst { name, min, max, active, scw_count, seq } = msg.payload;\n\n// Validate the destructured properties to ensure they exist and prevent errors\nif (typeof name === 'undefined' || typeof min === 'undefined' || typeof max === 'undefined' || typeof active === 'undefined' || typeof scw_count === 'undefined' || typeof seq === 'undefined') {\n    // Handle the error case or initialize variables to a default value\n    console.error('Missing required properties in the payload');\n    return msg; // Exit the function early if the validation fails\n}\n\n// Assuming 'data' needs to be a combination or transformation of the destructured properties\n// Customize this transformation according to your needs\nconst data = `NAME:${name},MIN:${min},MAX:${max},SCW:${scw_count},SEQ:${seq}`;\n// Update the payload with the transformed data\nmsg.payload = `$UPDATE:${data}#`;\n// Return the updated message\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 840,
+        "wires": [
+            [
+                "d5437f2fdbd49fb3",
+                "a4cd25fbaaf80e42"
+            ]
+        ]
+    },
+    {
+        "id": "d5437f2fdbd49fb3",
+        "type": "debug",
+        "z": "f108ee4240c970c2",
+        "name": "debug 11",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 960,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "0ef08d2441184ecf",
+        "type": "serial out",
+        "z": "f108ee4240c970c2",
+        "name": "",
+        "serial": "08b3b1cd5e4cbf45",
+        "x": 960,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "a4cd25fbaaf80e42",
+        "type": "serial out",
+        "z": "f108ee4240c970c2",
+        "name": "",
+        "serial": "08b3b1cd5e4cbf45",
+        "x": 960,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "f70923366defd308",
+        "type": "rpi-gpio in",
+        "z": "f07804535f466a54",
+        "name": "ESC",
+        "pin": "6",
+        "intype": "up",
+        "debounce": "25",
+        "read": false,
+        "bcm": true,
+        "x": 170,
+        "y": 460,
+        "wires": [
+            [
+                "e72578d793af40a5",
+                "0de532a5de696cbc"
+            ]
+        ]
+    },
+    {
+        "id": "d615fe498b4a1ee0",
+        "type": "rpi-gpio in",
+        "z": "f07804535f466a54",
+        "name": "UP",
+        "pin": "13",
+        "intype": "up",
+        "debounce": "25",
+        "read": true,
+        "bcm": true,
+        "x": 172.765625,
+        "y": 530.75,
+        "wires": [
+            [
+                "6674aa89fc86ceba",
+                "0de532a5de696cbc"
+            ]
+        ]
+    },
+    {
+        "id": "d6b1792f3bbca2f4",
+        "type": "rpi-gpio in",
+        "z": "f07804535f466a54",
+        "name": "DOWN",
+        "pin": "19",
+        "intype": "up",
+        "debounce": "25",
+        "read": false,
+        "bcm": true,
+        "x": 170,
+        "y": 600,
+        "wires": [
+            [
+                "3610aca19edffa5d",
+                "0de532a5de696cbc"
+            ]
+        ]
+    },
+    {
+        "id": "61c2bbc2c280b70b",
+        "type": "rpi-gpio in",
+        "z": "f07804535f466a54",
+        "name": "ENTER",
+        "pin": "26",
+        "intype": "up",
+        "debounce": "25",
+        "read": false,
+        "bcm": true,
+        "x": 170,
+        "y": 660,
+        "wires": [
+            [
+                "d8c1d1920a151662",
+                "0de532a5de696cbc"
+            ]
+        ]
+    },
+    {
+        "id": "e72578d793af40a5",
+        "type": "function",
+        "z": "f07804535f466a54",
+        "name": "ESC",
+        "func": "if(msg.payload != 0){\n    return\n}\n\nlet object = { btn: \"ESC\" };\nmsg.payload = object;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 460,
+        "wires": [
+            [
+                "a1e9d734dd1699cb",
+                "6438939424c6a8bf"
+            ]
+        ]
+    },
+    {
+        "id": "6438939424c6a8bf",
+        "type": "http request",
+        "z": "f07804535f466a54",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "query",
+        "url": "http://127.0.0.1:8888",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1050,
+        "y": 460,
+        "wires": [
+            [
+                "0e1b2539f7cde0f0"
+            ]
+        ]
+    },
+    {
+        "id": "0e1b2539f7cde0f0",
+        "type": "debug",
+        "z": "f07804535f466a54",
+        "name": "debug 14",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1440,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "6674aa89fc86ceba",
+        "type": "function",
+        "z": "f07804535f466a54",
+        "name": "UP",
+        "func": "if(msg.payload != 0){\n    return\n}\n\nif(global.get('MODE') == 0){\n    return;\n}\n\nlet object = { btn: \"UP\" };\nmsg.payload = object;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 540,
+        "wires": [
+            [
+                "f3a784af8542c0df"
+            ]
+        ]
+    },
+    {
+        "id": "3610aca19edffa5d",
+        "type": "function",
+        "z": "f07804535f466a54",
+        "name": "DOWN",
+        "func": "if(msg.payload != 0){\n    return\n}\n\nlet object = { btn: \"DOWN\"};\nmsg.payload = object;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 600,
+        "wires": [
+            [
+                "f3a784af8542c0df"
+            ]
+        ]
+    },
+    {
+        "id": "d8c1d1920a151662",
+        "type": "function",
+        "z": "f07804535f466a54",
+        "name": "ENTER",
+        "func": "if(msg.payload != 0){\n    return\n}\n\nlet object = { btn: \"ENTER\"};\nmsg.payload = object;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 660,
+        "wires": [
+            [
+                "f3a784af8542c0df"
+            ]
+        ]
+    },
+    {
+        "id": "f3a784af8542c0df",
+        "type": "function",
+        "z": "f07804535f466a54",
+        "name": "FILTER",
+        "func": "if (global.get('MODE') == 0) {\n    return;\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 620,
+        "wires": [
+            [
+                "6438939424c6a8bf"
+            ]
+        ]
+    },
+    {
+        "id": "0de532a5de696cbc",
+        "type": "function",
+        "z": "f07804535f466a54",
+        "name": "TONE",
+        "func": "\nif(msg.payload == 1){\n    return;\n}\n\nlet tone = \"$TONE:BTN#\";\nmsg.payload = tone;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 780,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "987ff897dcd22b6e",
+        "type": "serial out",
+        "z": "f07804535f466a54",
+        "name": "",
+        "serial": "08b3b1cd5e4cbf45",
+        "x": 960,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "dbfed34b2de94315",
+        "type": "delay",
+        "z": "f07804535f466a54",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "150",
+        "timeoutUnits": "milliseconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 710,
+        "y": 780,
+        "wires": [
+            [
+                "987ff897dcd22b6e"
+            ]
+        ]
+    },
+    {
+        "id": "a1e9d734dd1699cb",
+        "type": "debug",
+        "z": "f07804535f466a54",
+        "name": "debug 28",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 670,
+        "y": 360,
+        "wires": []
+    }
+]
