@@ -21,7 +21,7 @@
 // -------------------- PIN -------------------- //
 #define BTN_CENSOR_ON_ST 7
 void btnCensorOnStOnEventChange(bool state);
-TcBUTTON btnCensorOnSt(BTN_CENSOR_ON_ST, false);
+TcBUTTON btnCensorOnSt(BTN_CENSOR_ON_ST, true);
 
 #define START_PIN 8
 void startOnEventChange(bool state);
@@ -76,7 +76,7 @@ boolean stateStart, stateStop = false;
 boolean stateLockJig = false;
 int countLockJig = 0;
 int countUnlockJig = 0;
-const int countLockJigMax = 3 * 10; // 3 second
+const int countLockJigMax = 1 * 10; // 3 second
 boolean stateCensorOnStation = false;
 String name = "SELECT ITEM ";
 int stdMin, stdMax = 0;
@@ -308,6 +308,7 @@ void setup()
 
 void loop()
 {
+  buzzerPass.update();
   btnCensorOnSt.update();
   startButton.update();
   stopButton.update();
@@ -494,7 +495,7 @@ void loop()
   }
   // ToneFun(currentMillis, lastTimeTonePASS, 200, 2000, 50, passToneCount); //
   // ToneFun(currentMillis, lastTimeToneNG, 100, 2000, 50, ngToneCount);
-  buzzerPass.update();
+
   // buzzerNG.update();
 }
 
