@@ -266,6 +266,7 @@ void serialEventSW()
     }
   }
 }
+
 bool IsStateStarted = false;
 void LED_Controls(uint8_t);
 void setup()
@@ -276,7 +277,6 @@ void setup()
   Serial.begin(9600);
   Serial1.begin(9600);
   mySerial.begin(9600);
-
   memset(inputString, 0, BUFFER_SIZE_DATA);
   memset(inputString1, 0, BUFFER_SIZE_DATA);
   memset(inputStringI2c, 0, BUFFER_SIZE_DATA);
@@ -498,10 +498,6 @@ void loop()
   {
     previousMillis = currentMillis;
   }
-  // ToneFun(currentMillis, lastTimeTonePASS, 200, 2000, 50, passToneCount); //
-  // ToneFun(currentMillis, lastTimeToneNG, 100, 2000, 50, ngToneCount);
-
-  // buzzerNG.update();
 }
 
 void manageSerial()
@@ -563,29 +559,6 @@ void manageByteSerial1()
   }
 }
 
-// void ToneFun(uint32_t _currentMillis, uint32_t &_lastTime, uint32_t _toneTime, int _toneFreq, uint8_t _dutyCycle, uint8_t &totalTone)
-// {
-//   if (totalTone <= 0)
-//   {
-//     return;
-//   }
-//   // uint32_t currentMillis = millis();
-//   if (_currentMillis - _lastTime > _toneTime)
-//   {
-//     if (_dutyCycle > 0)
-//     {
-//       int p = (int)(_dutyCycle * _toneTime / 100);
-//       tone(BUZZER_PIN, _toneFreq, p);
-//       totalTone--;
-//     }
-//     _lastTime = _currentMillis;
-//   }
-//   else if (_currentMillis < _lastTime)
-//   {
-//     _lastTime = _currentMillis;
-//   }
-// }
-
 void manageSerial1()
 {
   if (startReceived1 && endReceived1)
@@ -642,11 +615,9 @@ void parseData(String dataInput)
   {
     if (!isAllowMes)
     {
-      //   Serial.print("Not allow");
       scannerShow = 10;
       scannerData = "Not allow";
       // ngToneCount = 10;
-      // buzzerPass.setTime(100);
       buzzerPass.total = 10;
       return;
     }
@@ -684,11 +655,8 @@ void parseData(String dataInput)
       isAllowMes = true;
       sequence = RESET;
       countUnlockJig = countLockJigMax;
-      // passToneCount += 1;
       buzzerPass.off();
 
-      // delay(200);
-      
       buzzerPass.setTime(200);
       buzzerPass.total += 1;
       String data = "$LOG:";
