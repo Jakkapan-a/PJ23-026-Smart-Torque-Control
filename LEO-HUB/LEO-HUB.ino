@@ -61,7 +61,6 @@ TcPINOUT relayTorquePwr(RELAY_TORQUE_PWR_PIN, false);
 
 #define BUZZER_PIN 6
 TcBUZZER buzzerPass(BUZZER_PIN, false);
-// TcBUZZER buzzerNG(BUZZER_PIN, false);
 
 // ----------------- VARIABLE ----------------- //
 uint8_t passToneCount = 0;
@@ -267,7 +266,7 @@ void serialEventSW()
     }
   }
 }
-
+bool IsStateStarted = false;
 void LED_Controls(uint8_t);
 void setup()
 {
@@ -308,7 +307,7 @@ void setup()
 
 void loop()
 {
-  buzzerPass.update();
+
   btnCensorOnSt.update();
   startButton.update();
   stopButton.update();
@@ -337,34 +336,7 @@ void loop()
         // Check count screw
         if (countScrew >= countScrewMax)
         {
-          if (countScrew == countScrewMax)
-          {
-            currentSequenceOfTest++;
-            if (currentSequenceOfTest >= totalSequenceOfTest)
-            {
-              // complete
-              sequence = PASS;
-              isAllowMes = true;
-              // passToneCount = 1;
-              buzzerPass.setTime(200);
-              buzzerPass.total = 1;
-              countUnlockJig = countLockJigMax;
-              // LED ON ledGreen
-              LED_Controls(2);
-              currentSequenceOfTest = 0;
-              Serial.println("Complete");
-              // mySerial.println("$SEQ:RST#");
-            }
-            else
-            {
-              // next sequence of test
-              //
-              countScrew = 0;
-              Serial.println("Next sequence of test");
-              mySerial.println("$SEQ:NEXT#");
-            }
-          }
-          else
+          if (countScrew != countScrewMax)
           {
             isAllowMes = false;
             sequence = NG;
@@ -387,7 +359,6 @@ void loop()
       {
         // NG
         sequence = NG;
-        // ngToneCount = totalToneNG;
         // LED ON ledRed
         LED_Controls(1);
       }
@@ -401,27 +372,61 @@ void loop()
       data += "#";
       Serial.println(data);
       mySerial.println(data);
+
+      if (timeComplete >= stdMin && timeComplete <= stdMax)
+      {
+        // Check count screw
+        if (countScrew >= countScrewMax)
+        {
+          if (countScrew == countScrewMax)
+          {
+            currentSequenceOfTest++;
+            if (currentSequenceOfTest >= totalSequenceOfTest)
+            {
+              // complete
+              sequence = PASS;
+              isAllowMes = true;
+              // passToneCount = 1;
+              buzzerPass.setTime(200);
+              buzzerPass.total += 1;
+              countUnlockJig = countLockJigMax;
+              // LED ON ledGreen
+              LED_Controls(2);
+              currentSequenceOfTest = 0;
+              Serial.println("Complete");
+              // mySerial.println("$SEQ:RST#");
+            }
+            else
+            {
+              sequence = TESTING;
+              // next sequence of test
+              //
+              countScrew = 0;
+              Serial.println("Next sequence of test");
+              mySerial.println("$SEQ:NEXT#");
+            }
+          }
+        }
+      }
     }
 
     if (sequence == NG)
     {
-      // ngToneCount = totalToneNG;
-      // buzzerNG.on(totalToneNG);
-      // buzzerPass.setTime(100);
       buzzerPass.total = 15;
     }
   }
+
+  // check ubuntu starting to return 
+   if (isStarted == false)
+    {
+      return;
+    }
+  // 
+  buzzerPass.update();
+
   // ----------------- MODE TSET ----------------- //
   if (currentMillis - previousMillis >= 100)
   {
-
-    if (isStarted == false)
-    {
-      // isStarted = true;
-      // mySerial.println("$PWR:ON#");
-      return;
-    }
-
     if (!isMenuSetting)
     {
       if (stateCensorOnStation)
