@@ -456,7 +456,7 @@
         "type": "debug",
         "z": "07f82150235aa65f",
         "name": "debug 20",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -761,7 +761,7 @@
         "type": "debug",
         "z": "07f82150235aa65f",
         "name": "debug 26",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -777,7 +777,7 @@
         "type": "debug",
         "z": "07f82150235aa65f",
         "name": "debug 27",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -963,7 +963,7 @@
         "type": "debug",
         "z": "07f82150235aa65f",
         "name": "debug 29",
-        "active": false,
+        "active": true,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -1715,34 +1715,9 @@
         "z": "f07804535f466a54",
         "name": "",
         "serial": "08b3b1cd5e4cbf45",
-        "x": 960,
-        "y": 780,
+        "x": 1040,
+        "y": 940,
         "wires": []
-    },
-    {
-        "id": "dbfed34b2de94315",
-        "type": "delay",
-        "z": "f07804535f466a54",
-        "name": "",
-        "pauseType": "delay",
-        "timeout": "150",
-        "timeoutUnits": "milliseconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 710,
-        "y": 780,
-        "wires": [
-            [
-                "987ff897dcd22b6e"
-            ]
-        ]
     },
     {
         "id": "a1e9d734dd1699cb",
@@ -1758,6 +1733,61 @@
         "statusType": "auto",
         "x": 670,
         "y": 360,
+        "wires": []
+    },
+    {
+        "id": "29cf77c2619de7d6",
+        "type": "rpi-gpio in",
+        "z": "f07804535f466a54",
+        "name": "",
+        "pin": "4",
+        "intype": "tri",
+        "debounce": "1",
+        "read": false,
+        "bcm": true,
+        "x": 170,
+        "y": 900,
+        "wires": [
+            [
+                "01881da012f8ab9d"
+            ]
+        ]
+    },
+    {
+        "id": "01881da012f8ab9d",
+        "type": "function",
+        "z": "f07804535f466a54",
+        "name": "function 21",
+        "func": "let mess = \"$P1:\"\nif (msg.payload == 0) {\n    mess += \"0\";\n}else{\n    mess += \"1\";\n}\nmess += \"#\";\n\nmsg.payload = mess;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 920,
+        "wires": [
+            [
+                "d3e80b0aae50d66f",
+                "987ff897dcd22b6e"
+            ]
+        ]
+    },
+    {
+        "id": "d3e80b0aae50d66f",
+        "type": "debug",
+        "z": "f07804535f466a54",
+        "name": "debug 35",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 740,
+        "y": 1000,
         "wires": []
     }
 ]

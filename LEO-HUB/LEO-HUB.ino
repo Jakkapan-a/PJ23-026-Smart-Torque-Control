@@ -64,11 +64,8 @@ TcBUZZER buzzerPass(BUZZER_PIN, false);
 
 // ----------------- VARIABLE ----------------- //
 uint8_t passToneCount = 0;
-// uint32_t lastTimeTonePASS = 0;
 uint8_t ngToneCount = 0;
 const uint8_t totalToneNG = 15;
-// uint32_t lastTimeToneNG = 0;
-
 uint32_t previousMillis = 0;
 uint32_t timeStart, timeComplete = 0;
 boolean stateStart, stateStop = false;
@@ -84,6 +81,9 @@ int countScrewMax = 0;
 bool isAllowMes = false;
 bool isStarted = false;
 
+bool isCensorOnStation = false;
+bool isEndProcess = false;
+
 uint8_t currentSequenceOfTest = 0;
 uint8_t totalSequenceOfTest = 0;
 
@@ -97,7 +97,6 @@ enum SEQUENCE
   RESET,
   READY
 };
-// int count_pwr = 50;
 SEQUENCE sequence = READY; // Default state
 
 String item = "";
@@ -319,7 +318,6 @@ void loop()
   manageSerialI2c();
   manageByteSerial1();
   manageSWSerial();
-  
 
   uint32_t currentMillis = millis();
   if (!isMenuSetting)
@@ -328,7 +326,6 @@ void loop()
     {
       stateStart = false;
       stateStop = false;
-      // timeEnd = currentMillis;
       timeComplete = currentMillis - timeStart;
       countScrew++;
       if (timeComplete >= stdMin && timeComplete <= stdMax)
@@ -383,24 +380,12 @@ void loop()
             currentSequenceOfTest++;
             if (currentSequenceOfTest >= totalSequenceOfTest)
             {
-              // complete
+              /** */
               sequence = PASS;
-              isAllowMes = true;
-              // passToneCount = 1;
-              buzzerPass.setTime(200);
-              buzzerPass.total += 1;
-              countUnlockJig = countLockJigMax;
-              // LED ON ledGreen
-              LED_Controls(2);
-              currentSequenceOfTest = 0;
-              Serial.println("Complete");
-              // mySerial.println("$SEQ:RST#");
             }
             else
             {
               sequence = TESTING;
-              // next sequence of test
-              //
               countScrew = 0;
               Serial.println("Next sequence of test");
               mySerial.println("$SEQ:NEXT#");
@@ -416,13 +401,54 @@ void loop()
     }
   }
 
-  // check ubuntu starting to return 
-   if (isStarted == false)
-    {
-      return;
-    }
-  // 
+  // check ubuntu starting to return
+  if (isStarted == false)
+  {
+    return;
+  }
+  //
   buzzerPass.update();
+
+  if (isEndProcess && isCensorOnStation)
+  {
+    /** End process */
+    isEndProcess = false;
+    isCensorOnStation = false;
+
+    if (sequence == PASS)
+    {
+      isAllowMes = true;
+      // passToneCount = 1;
+      buzzerPass.setTime(200);
+      buzzerPass.total += 2;
+      countUnlockJig = countLockJigMax;
+      // LED ON ledGreen
+      LED_Controls(2);
+      currentSequenceOfTest = 0;
+      Serial.println("Complete");
+
+      isCensorOnStation = false;
+
+      // After stop, reset all value to default and check screw count
+      mySerial.println("$SEQ:RST#");
+      currentSequenceOfTest = 0;
+      countScrew = 0;
+      sequence = READY;
+      timeComplete = 0;
+    
+
+      if(btnCensorOnSt.getState()){
+         btnCensorOnStOnEventChange(true);
+      }
+    }
+    else
+    {
+      sequence = NG;
+      // LED ON ledRed
+      LED_Controls(1);
+      isCensorOnStation = true;
+    }
+  }
 
   // ----------------- MODE TSET ----------------- //
   if (currentMillis - previousMillis >= 100)
@@ -451,6 +477,9 @@ void loop()
             countLockJig = 0; //
           }
         }
+      }else{
+        relayLockJig.off();
+        relayTorquePwr.off();
       }
       if (oldIsMenuSetting != isMenuSetting)
       {
@@ -546,8 +575,6 @@ void manageByteSerial1()
     {
       rfidData = "Not accept";
       ngToneCount = totalToneNG;
-      // buzzerNG.total = totalToneNG;
-      // buzzerPass.setTime(100);
       buzzerPass.total = 15;
     }
     rfidShow = 10;
@@ -634,7 +661,7 @@ void parseData(String dataInput)
       Keyboard.releaseAll();
     }
     // passToneCount += 1;
-    buzzerPass.setTime(200);  
+    buzzerPass.setTime(200);
     buzzerPass.total += 1;
     scannerShow = 10;
     scannerData = "OK";
@@ -644,6 +671,14 @@ void parseData(String dataInput)
     String serialDataLine1 = extractData(dataInput, "line1:");
     String serialDataLine2 = extractData(dataInput, "line2:");
     updateLCD(serialDataLine1, serialDataLine2);
+  }
+  else if (dataInput.indexOf("P1:") != -1)
+  {
+    String serialData = extractData(dataInput, "P1:");
+    if (serialData == "0")
+    {
+      isEndProcess = true;
+    }
   }
   else if (dataInput.indexOf("RFID:") != -1)
   {
@@ -665,6 +700,17 @@ void parseData(String dataInput)
       data += "#";
       // Serial.println(data);
       mySerial.println(data);
+
+      isCensorOnStation = false;
+
+      // clear
+
+      mySerial.println("$SEQ:RST#");
+      currentSequenceOfTest = 0;
+      countScrew = 0;
+      sequence = READY;
+      timeComplete = 0;
+
     }
     else
     {
@@ -708,7 +754,8 @@ void parseData(String dataInput)
   else if (dataInput.indexOf("PWR:") != -1)
   {
     // String _extractData = extractData(dataInput, "PWR:");
-    if(isStarted ==  false){
+    if (isStarted == false)
+    {
       mySerial.println("$SEQ:RST#"); // Reset sequence
     }
     isStarted = true;
@@ -770,7 +817,6 @@ void updateLCD(const String newDataLine1, const String newDataLine2)
 {
   updateLCD(newDataLine1.c_str(), newDataLine2.c_str());
 }
-
 
 void updateLCD(const char *newDataLine1, const char *newDataLine2)
 {
@@ -850,19 +896,12 @@ void LED_Controls(uint8_t state = 0)
 void btnCensorOnStOnEventChange(bool state)
 {
   stateCensorOnStation = !state;
+  if(!isCensorOnStation){
+    isCensorOnStation = stateCensorOnStation;
+  }
+
   if (!stateCensorOnStation)
   {
-    // After stop, reset all value to default and check screw count
-    mySerial.println("$SEQ:RST#");
-    currentSequenceOfTest = 0;
-    countScrew = 0;
-    sequence = READY;
-    // ngToneCount = 0; // Reset ng tone
-    // buzzerNG.off();
-    buzzerPass.off();
-    timeComplete = 0;
-    isAllowMes = false;
-    LED_Controls(0);
     Serial.println("--------LED OFF STD ----------");
     relayLockJig.off();
     relayTorquePwr.off();
@@ -871,22 +910,30 @@ void btnCensorOnStOnEventChange(bool state)
     data += ",data: SENSOR OFF ";
     data += "#";
     mySerial.println(data);
+    isAllowMes = false;
+
+    LED_Controls(0);
+    buzzerPass.off();
   }
   else
   {
-    mySerial.println("$ITEM:GET#");
-    isAllowMes = false;
-    countLockJig = countLockJigMax;
-    previousMillis = millis();
-    sequence = TESTING;
     Serial.println("--------LED ON STD ----------");
-
     String data = "$LOG:";
     data += ",item:" + item;
-    data += ",data: SENSOR OFF ";
+    data += ",data: SENSOR ON ";
     data += "#";
+    if(sequence != NG ){
+    countLockJig = countLockJigMax;
+    }
     mySerial.println(data);
+    isAllowMes = false;
+    if(!isCensorOnStation){
+      previousMillis = millis();
+      sequence = TESTING;
+      mySerial.println("$ITEM:GET#");
+    }
   }
+  isEndProcess = false;
 }
 
 void startOnEventChange(bool state)
