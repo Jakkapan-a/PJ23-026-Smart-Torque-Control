@@ -31,6 +31,10 @@ TcBUTTON startButton(START_PIN, false);
 void stopOnEventChange(bool state);
 TcBUTTON stopButton(STOP_PIN, false);
 
+#define END_PIN 12
+void endOnEventChange(bool state);
+TcBUTTON endButton(END_PIN, true);
+
 // -------------------- RELAY -------------------- //
 #define LED_RED_PIN 4
 TcPINOUT ledRed(LED_RED_PIN, false);
@@ -38,7 +42,7 @@ TcPINOUT ledRed(LED_RED_PIN, false);
 #define LED_GREEN_PIN 5
 TcPINOUT ledGreen(LED_GREEN_PIN, false);
 
-#define LED_BLUE_PIN 12
+#define LED_BLUE_PIN 13
 TcPINOUT ledBlue(LED_BLUE_PIN, false);
 
 #define RELAY_RED_PIN A0
@@ -294,6 +298,8 @@ void setup()
   startButton.DebounceDelay(10); // Set debounce delay to 10ms
   stopButton.OnEventChange(stopOnEventChange);
   stopButton.DebounceDelay(10); // Set debounce delay to 10ms
+  endButton.OnEventChange(endOnEventChange);
+  endButton.DebounceDelay(2); // Set debounce delay to 5ms
   // ----------------- RELAY ----------------- //
   LED_Controls(0);
   isStarted = false;
@@ -310,9 +316,9 @@ void loop()
   btnCensorOnSt.update();
   startButton.update();
   stopButton.update();
+  endButton.update();
   // -- Serial SW -- //
   serialEventSW();
-
   manageSerial();
   manageSerial1();
   manageSerialI2c();
@@ -810,6 +816,7 @@ String extractData(String dataInput, String key)
   String valueStr = dataInput.substring(startIndex, endIndex); // Extract the substring
   return valueStr;                                             // Return the extracted string
 }
+
 char currentLine1[17] = "                "; // 16 characters + null terminator
 char currentLine2[17] = "                "; // 16 characters + null terminator
 
@@ -972,5 +979,15 @@ void stopOnEventChange(bool state)
     data += "#";
     // Serial.println(data);
     mySerial.println(data);
+  }
+}
+
+
+void endOnEventChange(bool state)
+{
+  if (state)
+  {
+    parseData("P1:0");
+    Serial.println("end true");
   }
 }

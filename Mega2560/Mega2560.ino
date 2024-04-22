@@ -384,6 +384,7 @@ void HomeDisplay() {
   }
   updateLCD(line1, line2);
 }
+
 String getModelName(int index) {
   if (index < 0 || index > 9) {
     return "";
