@@ -300,6 +300,7 @@ void setup()
   stopButton.DebounceDelay(10); // Set debounce delay to 10ms
   endButton.OnEventChange(endOnEventChange);
   endButton.DebounceDelay(2); // Set debounce delay to 5ms
+
   // ----------------- RELAY ----------------- //
   LED_Controls(0);
   isStarted = false;
@@ -430,7 +431,6 @@ void loop()
       countUnlockJig = countLockJigMax;
       // LED ON ledGreen
       LED_Controls(2);
-      currentSequenceOfTest = 0;
       Serial.println("Complete");
 
       isCensorOnStation = false;

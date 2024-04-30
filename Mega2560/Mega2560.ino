@@ -1231,7 +1231,6 @@ uint16_t readInt16CInEEPROM(int index) {
 
 int getAddress(int indexM, int index)
 {
-  // int baseAddress = indexM + 10;
   int address = (indexM + 10) + (index * 2);
   return address;
 }
