@@ -106,8 +106,8 @@ SEQUENCE sequence = READY; // Default state
 String item = "";
 String id = "";
 bool isMenuSetting, oldIsMenuSetting = false;
-#define TX_PIN 10
-#define RX_PIN 11
+#define RX_PIN 10
+#define TX_PIN 11
 SoftwareSerial mySerial(RX_PIN, TX_PIN); // RX, TX
 // -------------------- FUNCTION -------------------- //
 #define BUFFER_SIZE_DATA 60
