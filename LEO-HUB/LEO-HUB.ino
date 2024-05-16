@@ -106,6 +106,15 @@ SEQUENCE sequence = READY; // Default state
 String item = "";
 String id = "";
 bool isMenuSetting, oldIsMenuSetting = false;
+/*
+----------- Old Version TX,RX
+*/
+
+// #define RX_PIN 11
+// #define TX_PIN 10
+/*
+----------- Last Version  TX,RX
+*/
 #define RX_PIN 10
 #define TX_PIN 11
 SoftwareSerial mySerial(RX_PIN, TX_PIN); // RX, TX
@@ -646,6 +655,8 @@ void manageSWSerial()
 void parseData(String dataInput)
 {
   dataInput.trim();
+  Serial.print("$REV:OK");
+  Serial.println("#");
   if (dataInput.indexOf("KBD_K:") != -1)
   {
     if (!isAllowMes)
@@ -791,11 +802,13 @@ void parseData(String dataInput)
     {
       countScrewMax = _extractData.toInt();
     }
+
     _extractData = extractData(dataInput, "SEQ:");
     if (_extractData.length() > 0)
     {
       totalSequenceOfTest = _extractData.toInt();
     }
+    
     _extractData = extractData(dataInput, "NAME:");
     if (_extractData.length() > 0)
     {
