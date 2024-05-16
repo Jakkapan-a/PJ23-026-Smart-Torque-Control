@@ -441,11 +441,11 @@ void loop()
       countScrew = 0;
       sequence = READY;
       timeComplete = 0;
-    
-
-      if(btnCensorOnSt.getState()){
-         btnCensorOnStOnEventChange(true);
-      }
+      
+      
+      // if(btnCensorOnSt.getState()){
+      //    btnCensorOnStOnEventChange(true);
+      // }
     }
     else
     {
@@ -454,6 +454,8 @@ void loop()
       LED_Controls(1);
       isCensorOnStation = true;
     }
+    // Request item to new item
+    mySerial.println("$ITEM:GET#");
   }
 
   // ----------------- MODE TSET ----------------- //
@@ -763,6 +765,9 @@ void parseData(String dataInput)
     if (isStarted == false)
     {
       mySerial.println("$SEQ:RST#"); // Reset sequence
+      delay(20); // Delay 10ms
+      // Request item to new item
+      mySerial.println("$ITEM:GET#");
     }
     isStarted = true;
   }
@@ -934,11 +939,11 @@ void btnCensorOnStOnEventChange(bool state)
     }
     mySerial.println(data);
     isAllowMes = false;
-    if(!isCensorOnStation){
-      previousMillis = millis();
-      sequence = TESTING;
-      mySerial.println("$ITEM:GET#");
-    }
+    // if(!isCensorOnStation){
+    //   previousMillis = millis();
+    //   sequence = TESTING;
+    //   mySerial.println("$ITEM:GET#");
+    // }
   }
   isEndProcess = false;
 }
