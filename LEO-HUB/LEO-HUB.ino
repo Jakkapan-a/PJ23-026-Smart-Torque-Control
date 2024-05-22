@@ -322,7 +322,6 @@ void setup()
 
 void loop()
 {
-
   btnCensorOnSt.update();
   startButton.update();
   stopButton.update();
@@ -344,6 +343,7 @@ void loop()
       stateStop = false;
       timeComplete = currentMillis - timeStart;
       countScrew++;
+      delay(10);
       if (timeComplete >= stdMin && timeComplete <= stdMax)
       {
         // Check count screw
@@ -375,6 +375,7 @@ void loop()
         // LED ON ledRed
         LED_Controls(1);
       }
+
       String data = "$SAVE:"; // + String(timeComplete) + "#";
       data += ",item:" + String(item);
       data += ",time_start:" + String(timeStart);
@@ -385,7 +386,7 @@ void loop()
       data += "#";
       Serial.println(data);
       mySerial.println(data);
-
+      data = "";
       if (timeComplete >= stdMin && timeComplete <= stdMax)
       {
         // Check count screw
@@ -394,6 +395,7 @@ void loop()
           if (countScrew == countScrewMax)
           {
             currentSequenceOfTest++;
+
             if (currentSequenceOfTest >= totalSequenceOfTest)
             {
               /** */
@@ -989,14 +991,17 @@ void startOnEventChange(bool state)
 void stopOnEventChange(bool state)
 {
   stateStop = !state;
-  if (stateStop)
+  if (!state)
   {
+    stateStop = true;
     String data = "$LOG:";
     data += ",item:" + item;
     data += ",data: STOP " + String(millis());
     data += "#";
     // Serial.println(data);
     mySerial.println(data);
+  }else{
+    stateStop =false;
   }
 }
 
