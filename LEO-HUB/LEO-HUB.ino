@@ -67,6 +67,7 @@ TcPINOUT relayTorquePwr(RELAY_TORQUE_PWR_PIN, false);
 TcBUZZER buzzerPass(BUZZER_PIN, false);
 
 // ----------------- VARIABLE ----------------- //
+
 uint8_t passToneCount = 0;
 uint8_t ngToneCount = 0;
 const uint8_t totalToneNG = 15;
