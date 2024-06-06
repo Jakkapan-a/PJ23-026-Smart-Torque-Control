@@ -2,13 +2,14 @@
  * @file LEO-HUB.ino
  * @author Jakkapan
  * @brief
- * @version 0.1
+ * @version 0.2
  * @date 2024-03-05
  * Arduino leonardo board
  *
  * @copyright Copyright (c) 2024
  *
  */
+
 #include <TcBUTTON.h>
 #include <TcPINOUT.h>
 #include <Wire.h>
@@ -67,6 +68,8 @@ TcPINOUT relayTorquePwr(RELAY_TORQUE_PWR_PIN, false);
 TcBUZZER buzzerPass(BUZZER_PIN, false);
 
 // ----------------- VARIABLE ----------------- //
+const String RFID_ADMIN = "090196071EB334";
+uint8_t count_reset_rfid = 0;
 
 uint8_t passToneCount = 0;
 uint8_t ngToneCount = 0;
@@ -320,13 +323,14 @@ void setup()
   buzzerPass.total = 2;
   // ----------------- SERIAL ----------------- //
 }
+bool IsProcessReset = false;
 
 void loop()
 {
-  btnCensorOnSt.update();
-  startButton.update();
-  stopButton.update();
-  endButton.update();
+    btnCensorOnSt.update();
+    startButton.update();
+    stopButton.update();
+    endButton.update();
   // -- Serial SW -- //
   serialEventSW();
   manageSerial();
@@ -454,10 +458,7 @@ void loop()
       sequence = READY;
       timeComplete = 0;
       
-      
-      // if(btnCensorOnSt.getState()){
-      //    btnCensorOnStOnEventChange(true);
-      // }
+      // ManageResetRFID();
     }
     else
     {
@@ -546,6 +547,19 @@ void loop()
   else if (currentMillis < previousMillis)
   {
     previousMillis = currentMillis;
+  }
+}
+
+void ManageResetRFID()
+{
+  count_reset_rfid++;
+  if(count_reset_rfid > 0){
+    delay(20);
+    IsProcessReset = true;
+    Serial.print("$RFID:");
+    Serial.print(RFID_ADMIN);
+    Serial.println("#");
+    count_reset_rfid = 0;
   }
 }
 
@@ -725,6 +739,7 @@ void parseData(String dataInput)
 
       isCensorOnStation = false;
 
+      IsProcessReset = false;
       // clear
 
       mySerial.println("$SEQ:RST#");
