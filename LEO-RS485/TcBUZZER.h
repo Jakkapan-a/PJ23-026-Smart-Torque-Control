@@ -7,7 +7,7 @@ class TcBUZZER
 {
  protected:
 	uint8_t pin = 0;
-    bool active = 1;
+    bool active = true;
     bool state = false;
     // uint32_t previousMillis;
     uint32_t previousMillisDuty;

@@ -16,7 +16,6 @@ void loop() {
 
   nDevices = 0;
   for(address = 1; address < 127; address++ ) {
-    // การเริ่มต้นการสื่อสารกับอุปกรณ์ที่ address
     Wire.beginTransmission(address);
     error = Wire.endTransmission();
 
