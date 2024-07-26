@@ -85,13 +85,13 @@ void setup() {
 
   Serial.begin(9600);
   Serial1.begin(9600);
-  mySerial.begin(19200);
+  mySerial.begin(9600);
 
   lcd.begin();
   lcd.clear();
   lcd.backlight();
 
-  modbus.begin(slaveID, 19200);
+  modbus.begin(slaveID, 9600);
   modbus.configureCoils(coils, 20);
   modbus.configureDiscreteInputs(discreteInputs, 20);
   modbus.configureHoldingRegisters(holdingRegisters, 30);
@@ -121,7 +121,8 @@ uint32_t TimeStampStop = 0;
 int delayProcess = 0;
 uint32_t _timeDiff = 0;
 int delayStopOff = 0;
-int delayEndOff = 0; 
+int delayEndOff = 0;
+int delayLogJig = 0;
 void loop() {
   btnCensorOnSt.update();
   startButton.update();
@@ -162,8 +163,10 @@ void loop() {
     _timeDiff = 0;
     TimeStampStart = 0;
     // -----------------
+
     if (discreteInputs[7] == true && holdingRegisters[18] < holdingRegisters[9]) {
       relayTorquePwr.on();
+      discreteInputs[9] = false;
     } else {
       relayTorquePwr.off();
     }
@@ -182,8 +185,10 @@ void loop() {
       discreteInputs[7] = false;
       buzzerPass.total = 1;
       buzzerPass.setTime(200);
-          // LED OFF
+      // LED OFF
       LED_Controls(0);
+
+      relayLockJig.off();
     } else {
       line1 = "Not Accept";
       buzzerPass.setTime(200);
@@ -217,10 +222,17 @@ void loop() {
       }
     }
 
-    if(delayEndOff > 0){
+    if (delayEndOff > 0) {
       delayEndOff--;
-      if(delayEndOff == 0){
+      if (delayEndOff == 0) {
         discreteInputs[8] = false;
+      }
+    }
+
+    if (delayLogJig > 0) {
+      delayLogJig--;
+      if (delayLogJig == 0) {
+        relayLockJig.on();
       }
     }
 
@@ -243,7 +255,7 @@ void loop() {
     coils[12] = false;
     buzzerPass.setTime(200);
     buzzerPass.total = 2;
-    
+    relayLockJig.off();
   }
 
   if (discreteInputs[6] == false && discreteInputs[9] == true) {
@@ -263,11 +275,12 @@ void loop() {
 
     String line1 = name + ":" + String(holdingRegisters[7]) + "-" + String(holdingRegisters[8]);
     String line2 = "SCW:" + String(holdingRegisters[18]) + "/" + String(holdingRegisters[9]) + ":" + String(_timeDiff) + "ms";
-
+    // ------------- Init -----------------//
     if (discreteInputs[7] == false) {
       String line2 = "Waiting....";
       // SET DISPLAY
       updateLCD(line1, line2);
+      relayTorquePwr.off();
       return;
     }
     if (discreteInputs[5] == true && discreteInputs[6] == false) {
@@ -354,10 +367,13 @@ void btnCensorOnStOnEventChange(bool state) {
     buzzerPass.setTime(200);
     // LED OFF
     LED_Controls(0);
+
+    delayLogJig = 20;
   }
 
   // Check if the start button is pressed
-  if (discreteInputs[7] == true) {
+  if (discreteInputs[7] == true && holdingRegisters[18] < holdingRegisters[9])
+  {
     relayTorquePwr.on();
   } else {
     relayTorquePwr.off();
@@ -370,11 +386,19 @@ void startOnEventChange(bool state) {
 
   if (discreteInputs[5] == true) {
     TimeStampStart = millis();
+
+    holdingRegisters[20] = (uint16_t)(TimeStampStart >> 16);     // Upper 16 bits
+    holdingRegisters[21] = (uint16_t)(TimeStampStart & 0xFFFF);  // Lower 16 bits
+
+    Serial.print("Time Start: ");
+    Serial.println(TimeStampStart);
     // LED BLUE
     LED_Controls(3);
   } else {
     // LED OFF
-    // LED_Controls(0);
+    if(holdingRegisters[18] != holdingRegisters[9]){
+      LED_Controls(0);
+    }
   }
 
   coils[5] = true;
@@ -397,6 +421,12 @@ void stopOnEventChange(bool state) {
 
     Serial.print("Time Diff: ");
     Serial.println(_timeDiff);
+
+    holdingRegisters[14] = (uint16_t)(TimeStampStop >> 16);     // Upper 16 bits
+    holdingRegisters[15] = (uint16_t)(TimeStampStop & 0xFFFF);  // Lower 16 bits
+
+    Serial.print("Time STOP: ");
+    Serial.println(TimeStampStop);
 
     holdingRegisters[16] = (uint16_t)(_timeDiff >> 16);     // Upper 16 bits
     holdingRegisters[17] = (uint16_t)(_timeDiff & 0xFFFF);  // Lower 16 bits
@@ -434,8 +464,7 @@ void endOnEventChange(bool state) {
   if (coils[10] == true) {
     return;
   }
-  if(!state == false)
-  {
+  if (!state == false) {
     delayEndOff = 2;
     return;
   }
@@ -450,7 +479,7 @@ void endOnEventChange(bool state) {
       coils[10] == true;
     }
     // Get and clear data
-       // LED OFF
+    // LED OFF
     LED_Controls(0);
   }
 
