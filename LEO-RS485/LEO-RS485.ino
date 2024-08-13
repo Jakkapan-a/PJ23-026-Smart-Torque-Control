@@ -102,7 +102,8 @@ void setup() {
   stopButton.OnEventChange(stopOnEventChange);
   stopButton.DebounceDelay(10);  // Set debounce delay to 10ms
   endButton.OnEventChange(endOnEventChange);
-  endButton.DebounceDelay(2);  // Set debounce delay to 5ms
+  endButton.isMicros = true;
+  endButton.DebounceDelay(500);  // Set debounce delay to 500us
 
   buzzerPass.setTime(200);
 
@@ -372,8 +373,7 @@ void btnCensorOnStOnEventChange(bool state) {
   }
 
   // Check if the start button is pressed
-  if (discreteInputs[7] == true && holdingRegisters[18] < holdingRegisters[9])
-  {
+  if (discreteInputs[7] == true) {
     relayTorquePwr.on();
   } else {
     relayTorquePwr.off();
