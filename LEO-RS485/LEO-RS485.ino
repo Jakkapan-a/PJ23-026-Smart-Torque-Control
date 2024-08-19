@@ -105,7 +105,7 @@ void setup() {
   endButton.isMicros = true;
   endButton.DebounceDelay(500);  // Set debounce delay to 500us
 
-  buzzerPass.setTime(200);
+  buzzerPass.setTime(300);
 
   Serial.println("Start");
   coils[2] = true;
@@ -125,11 +125,12 @@ int delayStopOff = 0;
 int delayEndOff = 0;
 int delayLogJig = 0;
 void loop() {
+  modbus.poll();
+  
   btnCensorOnSt.update();
   startButton.update();
   stopButton.update();
   endButton.update();
-  modbus.poll();
   buzzerPass.update();
   count++;
   holdingRegisters[0] = count;
@@ -155,7 +156,7 @@ void loop() {
   } else if (coils[2] == false && discreteInputs[2] == true) {
     discreteInputs[2] = false;
     buzzerPass.total += 2;
-    buzzerPass.setTime(200);
+    buzzerPass.setTime(300);
     // Init Data for process
   }
   // ---------- Update Next Process -----------
@@ -185,14 +186,14 @@ void loop() {
       line1 = "Accept";
       discreteInputs[7] = false;
       buzzerPass.total = 1;
-      buzzerPass.setTime(200);
+      buzzerPass.setTime(300);
       // LED OFF
       LED_Controls(0);
 
       relayLockJig.off();
     } else {
       line1 = "Not Accept";
-      buzzerPass.setTime(200);
+      buzzerPass.setTime(300);
       buzzerPass.total += 5;
     }
     updateLCD(line1, line2);
@@ -202,7 +203,7 @@ void loop() {
 
   // ----------------- SUM CHECK IS NG ----------------- //
   if (coils[10] == true) {
-    buzzerPass.setTime(200);
+    buzzerPass.setTime(300);
     buzzerPass.total = 15;
     // Pwr off
     relayTorquePwr.off();
@@ -254,7 +255,7 @@ void loop() {
   // ---------- SUM CHECK IS OK --------------
   if (coils[12] == true) {
     coils[12] = false;
-    buzzerPass.setTime(200);
+    buzzerPass.setTime(300);
     buzzerPass.total = 2;
     relayLockJig.off();
   }
@@ -365,7 +366,7 @@ void btnCensorOnStOnEventChange(bool state) {
   discreteInputs[7] = !state;
   if (discreteInputs[7]) {
     buzzerPass.total = 1;
-    buzzerPass.setTime(200);
+    buzzerPass.setTime(300);
     // LED OFF
     LED_Controls(0);
 
@@ -415,7 +416,7 @@ void stopOnEventChange(bool state) {
     //  millis();
     TimeStampStop = millis();
     buzzerPass.total = 1;
-    buzzerPass.setTime(200);
+    buzzerPass.setTime(300);
     // Process time compare
     _timeDiff = TimeStampStop - TimeStampStart;
 
@@ -471,7 +472,7 @@ void endOnEventChange(bool state) {
   discreteInputs[8] = !state;
   if (discreteInputs[8]) {
     // buzzerPass.total = 1;
-    // buzzerPass.setTime(200);
+    // buzzerPass.setTime(300);
     // Finish process
     discreteInputs[7] = false;
     // Validate

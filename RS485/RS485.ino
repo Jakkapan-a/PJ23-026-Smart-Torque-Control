@@ -10,14 +10,14 @@ void setup()
 
 void loop()
 {
-    Serial.println("Hello, world!");
-    rs485.println("Hello, world!");
-   delay(20);
+    //Serial.println("Hello, world!");
+    // rs485.println("Hello, world!");
+    //delay(20);
     if(rs485.available())
     {
         String data = rs485.readString();
         Serial.println(data);
     }
 
-    delay(2000);
+    //delay(2000);
 }
