@@ -102,8 +102,8 @@ void setup() {
   stopButton.OnEventChange(stopOnEventChange);
   stopButton.DebounceDelay(10);  // Set debounce delay to 10ms
   endButton.OnEventChange(endOnEventChange);
-  endButton.isMicros = true;
-  endButton.DebounceDelay(500);  // Set debounce delay to 500us
+  // endButton.isMicros = true;
+  endButton.DebounceDelay(1);  // Set debounce delay to 500us
 
   buzzerPass.setTime(300);
 
@@ -483,7 +483,8 @@ void endOnEventChange(bool state) {
     // LED OFF
     LED_Controls(0);
   }
-
+  
+  holdingRegisters[18] = 0;
   coils[8] = true;
 }
 
