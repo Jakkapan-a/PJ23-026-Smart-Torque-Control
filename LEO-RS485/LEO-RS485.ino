@@ -21,47 +21,51 @@
 // -------------------- PIN -------------------- //
 #define BTN_CENSOR_ON_ST 7
 void btnCensorOnStOnEventChange(bool state);
-TcBUTTON btnCensorOnSt(BTN_CENSOR_ON_ST, true);
+// TcBUTTON btnCensorOnSt(BTN_CENSOR_ON_ST, true);
+TcBUTTON btnCensorOnSt(BTN_CENSOR_ON_ST);
 
 #define START_PIN 8
 void startOnEventChange(bool state);
-TcBUTTON startButton(START_PIN, false);
+// TcBUTTON startButton(START_PIN, false);
+TcBUTTON startButton(START_PIN);
 
 #define STOP_PIN 9
 void stopOnEventChange(bool state);
-TcBUTTON stopButton(STOP_PIN, false);
+// TcBUTTON stopButton(STOP_PIN, false);
+TcBUTTON stopButton(STOP_PIN);
 
 #define END_PIN 12
 void endOnEventChange(bool state);
-TcBUTTON endButton(END_PIN, true);
+// TcBUTTON endButton(END_PIN, true);
+ TcBUTTON endButton(END_PIN);
 
 // -------------------- RELAY -------------------- //
 #define LED_RED_PIN 4
-TcPINOUT ledRed(LED_RED_PIN, false);
+TcPINOUT ledRed(LED_RED_PIN);
 
 #define LED_GREEN_PIN 5
-TcPINOUT ledGreen(LED_GREEN_PIN, false);
+TcPINOUT ledGreen(LED_GREEN_PIN);
 
 #define LED_BLUE_PIN 13
-TcPINOUT ledBlue(LED_BLUE_PIN, false);
+TcPINOUT ledBlue(LED_BLUE_PIN);
 
 #define RELAY_RED_PIN A0
-TcPINOUT relayRed(RELAY_RED_PIN, false);
+TcPINOUT relayRed(RELAY_RED_PIN);
 
 #define RELAY_GREEN_PIN A1
-TcPINOUT relayGreen(RELAY_GREEN_PIN, false);
+TcPINOUT relayGreen(RELAY_GREEN_PIN);
 
 #define RELAY_BLUE_PIN A2
-TcPINOUT relayBlue(RELAY_BLUE_PIN, false);
+TcPINOUT relayBlue(RELAY_BLUE_PIN);
 
 #define RELAY_ALARM_PIN A3
-TcPINOUT relayAram(RELAY_ALARM_PIN, false);
+TcPINOUT relayAram(RELAY_ALARM_PIN);
 
 #define RELAY_LOCK_JIG_PIN A4
-TcPINOUT relayLockJig(RELAY_LOCK_JIG_PIN, false);
+TcPINOUT relayLockJig(RELAY_LOCK_JIG_PIN);
 
 #define RELAY_TORQUE_PWR_PIN A5
-TcPINOUT relayTorquePwr(RELAY_TORQUE_PWR_PIN, false);
+TcPINOUT relayTorquePwr(RELAY_TORQUE_PWR_PIN);
 
 #define BUZZER_PIN 6
 TcBUZZER buzzerPass(BUZZER_PIN, true);
@@ -95,16 +99,17 @@ void setup() {
   modbus.configureCoils(coils, 20);
   modbus.configureDiscreteInputs(discreteInputs, 20);
   modbus.configureHoldingRegisters(holdingRegisters, 30);
-
-  btnCensorOnSt.OnEventChange(btnCensorOnStOnEventChange);
-  startButton.OnEventChange(startOnEventChange);
-  startButton.DebounceDelay(10);  // Set debounce delay to 10ms
-  stopButton.OnEventChange(stopOnEventChange);
-  stopButton.DebounceDelay(10);  // Set debounce delay to 10ms
-  endButton.OnEventChange(endOnEventChange);
-  // endButton.isMicros = true;
-  endButton.DebounceDelay(1);  // Set debounce delay to 500us
-
+  
+  btnCensorOnSt.isInvert = true;
+  btnCensorOnSt.setOnEventChange(btnCensorOnStOnEventChange);
+  
+  startButton.setOnEventChange(startOnEventChange);
+  startButton.setDebounceDelay(1);  // Set debounce delay to 10ms
+  stopButton.setOnEventChange(stopOnEventChange);
+  stopButton.setDebounceDelay(1);  // Set debounce delay to 10ms
+  endButton.isInvert = true;
+  endButton.setOnEventChange(endOnEventChange);
+  endButton.setDebounceDelay(1);  // Set debounce delay to 500us
   buzzerPass.setTime(300);
 
   Serial.println("Start");
@@ -337,7 +342,6 @@ void ReadRFID() {
             // Covert to string
             String cardNumberStr = String(cardNumber);
             cardNumberStr.toCharArray(_cardNumber, 17);
-
             // Store the card number into holding registers
             holdingRegisters[1] = (uint16_t)(cardNumber >> 16);     // Upper 16 bits
             holdingRegisters[2] = (uint16_t)(cardNumber & 0xFFFF);  // Lower 16 bits
@@ -534,7 +538,6 @@ String GetName() {
 }
 
 void LED_Controls(uint8_t state = 0) {
-
   // 1 = RED
   // 2 = GREEN
   // 3 = BLUE
