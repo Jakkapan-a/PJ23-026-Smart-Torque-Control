@@ -104,12 +104,14 @@ void setup() {
   btnCensorOnSt.setOnEventChange(btnCensorOnStOnEventChange);
   
   startButton.setOnEventChange(startOnEventChange);
-  startButton.setDebounceDelay(1);  // Set debounce delay to 10ms
+  startButton.setDebounceDelay(20);  // Set debounce delay to 20ms
+
   stopButton.setOnEventChange(stopOnEventChange);
-  stopButton.setDebounceDelay(1);  // Set debounce delay to 10ms
+  stopButton.setDebounceDelay(20);  // Set debounce delay to 20ms
+
   endButton.isInvert = true;
   endButton.setOnEventChange(endOnEventChange);
-  endButton.setDebounceDelay(1);  // Set debounce delay to 500us
+  endButton.setDebounceDelay(10);  // Set debounce delay to 500us
   buzzerPass.setTime(300);
 
   Serial.println("Start");
@@ -137,6 +139,7 @@ void loop() {
   stopButton.update();
   endButton.update();
   buzzerPass.update();
+
   count++;
   holdingRegisters[0] = count;
   if (count >= 1000) {
